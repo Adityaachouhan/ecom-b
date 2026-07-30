@@ -1,0 +1,262 @@
+export interface Seller {
+  id: string
+  name: string
+  ownerName: string
+  email: string
+  phone: string
+  avatar: string
+  gstNumber: string
+  panNumber: string
+  category: string[]
+  city: string
+  state: string
+  rating: number
+  reviewCount: number
+  totalProducts: number
+  totalOrders: number
+  totalRevenue: number
+  pendingPayouts: number
+  status: 'active' | 'pending' | 'suspended' | 'onboarding'
+  commissionRate: number
+  joinedAt: string
+  lastActive: string
+  bankAccount: {
+    bankName: string
+    accountNumber: string
+    ifsc: string
+  }
+  performanceScore: number
+  returnRate: number
+  cancellationRate: number
+}
+
+type RawSeller = Omit<Seller, 'commissionRate'>
+
+const COMMISSION_MAP: Record<string, number> = {
+  sel_001: 8, sel_002: 10, sel_003: 6, sel_004: 15,
+  sel_005: 12, sel_006: 12, sel_007: 10, sel_008: 12,
+}
+
+const rawSellers: RawSeller[] = [
+  {
+    id: 'sel_001',
+    name: 'Rahul Electronics',
+    ownerName: 'Rahul Mehta',
+    email: 'rahul@electronics.in',
+    phone: '+91 91234 56789',
+    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=RE&backgroundColor=6C47FF',
+    gstNumber: '27AABCU9603R1ZX',
+    panNumber: 'AABCU9603R',
+    category: ['Electronics', 'Audio', 'Wearables'],
+    city: 'Bangalore',
+    state: 'Karnataka',
+    rating: 4.7,
+    reviewCount: 3420,
+    totalProducts: 87,
+    totalOrders: 5621,
+    totalRevenue: 8920000,
+    pendingPayouts: 145000,
+    status: 'active',
+    joinedAt: '2022-11-20',
+    lastActive: '2024-06-05',
+    bankAccount: { bankName: 'HDFC Bank', accountNumber: '****4521', ifsc: 'HDFC0001234' },
+    performanceScore: 92,
+    returnRate: 2.1,
+    cancellationRate: 1.4,
+  },
+  {
+    id: 'sel_002',
+    name: 'TechGadgets Pro',
+    ownerName: 'Deepika Nair',
+    email: 'deepika@techgadgets.in',
+    phone: '+91 87654 32109',
+    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=TG&backgroundColor=22C55E',
+    gstNumber: '29AADCG1234R1ZY',
+    panNumber: 'AADCG1234R',
+    category: ['Electronics', 'Televisions', 'Cameras'],
+    city: 'Chennai',
+    state: 'Tamil Nadu',
+    rating: 4.5,
+    reviewCount: 1876,
+    totalProducts: 54,
+    totalOrders: 2890,
+    totalRevenue: 5430000,
+    pendingPayouts: 87000,
+    status: 'active',
+    joinedAt: '2023-03-10',
+    lastActive: '2024-06-04',
+    bankAccount: { bankName: 'SBI', accountNumber: '****7832', ifsc: 'SBIN0012345' },
+    performanceScore: 88,
+    returnRate: 3.2,
+    cancellationRate: 2.1,
+  },
+  {
+    id: 'sel_003',
+    name: 'Apple Reseller Official',
+    ownerName: 'iStore India',
+    email: 'contact@istore.in',
+    phone: '+91 80000 11111',
+    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=AR&backgroundColor=4F46E5',
+    gstNumber: '27AADCI9876R1ZZ',
+    panNumber: 'AADCI9876R',
+    category: ['Electronics', 'Laptops', 'Smartphones'],
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    rating: 4.9,
+    reviewCount: 8765,
+    totalProducts: 23,
+    totalOrders: 12300,
+    totalRevenue: 23400000,
+    pendingPayouts: 340000,
+    status: 'active',
+    joinedAt: '2021-06-01',
+    lastActive: '2024-06-06',
+    bankAccount: { bankName: 'ICICI Bank', accountNumber: '****2341', ifsc: 'ICIC0002345' },
+    performanceScore: 98,
+    returnRate: 0.8,
+    cancellationRate: 0.5,
+  },
+  {
+    id: 'sel_004',
+    name: 'Fashion Forward',
+    ownerName: 'Aisha Khan',
+    email: 'aisha@fashionforward.in',
+    phone: '+91 76543 21098',
+    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=FF&backgroundColor=FF6B35',
+    gstNumber: '07AACCK2345R1ZP',
+    panNumber: 'AACCK2345R',
+    category: ['Fashion', 'Footwear', 'Clothing'],
+    city: 'Delhi',
+    state: 'Delhi',
+    rating: 4.4,
+    reviewCount: 5678,
+    totalProducts: 234,
+    totalOrders: 18700,
+    totalRevenue: 11200000,
+    pendingPayouts: 210000,
+    status: 'active',
+    joinedAt: '2022-01-15',
+    lastActive: '2024-06-05',
+    bankAccount: { bankName: 'Axis Bank', accountNumber: '****8912', ifsc: 'UTIB0003456' },
+    performanceScore: 85,
+    returnRate: 5.6,
+    cancellationRate: 3.2,
+  },
+  {
+    id: 'sel_005',
+    name: 'HomeEssentials',
+    ownerName: 'Rajesh Kumar',
+    email: 'rajesh@homeessentials.in',
+    phone: '+91 65432 10987',
+    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=HE&backgroundColor=0D9488',
+    gstNumber: '24AACKH3456R1ZQ',
+    panNumber: 'AACKH3456R',
+    category: ['Home', 'Kitchen', 'Furniture', 'Appliances'],
+    city: 'Ahmedabad',
+    state: 'Gujarat',
+    rating: 4.6,
+    reviewCount: 3421,
+    totalProducts: 178,
+    totalOrders: 9870,
+    totalRevenue: 7650000,
+    pendingPayouts: 134000,
+    status: 'active',
+    joinedAt: '2022-07-20',
+    lastActive: '2024-06-03',
+    bankAccount: { bankName: 'Bank of Baroda', accountNumber: '****3421', ifsc: 'BARB0004567' },
+    performanceScore: 90,
+    returnRate: 2.8,
+    cancellationRate: 1.9,
+  },
+  {
+    id: 'sel_006',
+    name: 'Beauty Hub',
+    ownerName: 'Preethi Srinivas',
+    email: 'preethi@beautyhub.in',
+    phone: '+91 54321 09876',
+    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=BH&backgroundColor=EAB308',
+    gstNumber: '33AACKB4567R1ZR',
+    panNumber: 'AACKB4567R',
+    category: ['Beauty', 'Skincare', 'Makeup'],
+    city: 'Hyderabad',
+    state: 'Telangana',
+    rating: 4.5,
+    reviewCount: 12456,
+    totalProducts: 456,
+    totalOrders: 34000,
+    totalRevenue: 15600000,
+    pendingPayouts: 267000,
+    status: 'active',
+    joinedAt: '2021-11-01',
+    lastActive: '2024-06-06',
+    bankAccount: { bankName: 'HDFC Bank', accountNumber: '****6543', ifsc: 'HDFC0005678' },
+    performanceScore: 87,
+    returnRate: 3.5,
+    cancellationRate: 2.4,
+  },
+  {
+    id: 'sel_007',
+    name: 'AudioZone',
+    ownerName: 'Suresh Pillai',
+    email: 'suresh@audiozone.in',
+    phone: '+91 43210 98765',
+    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=AZ&backgroundColor=6C47FF',
+    gstNumber: '32AACKS5678R1ZS',
+    panNumber: 'AACKS5678R',
+    category: ['Electronics', 'Audio'],
+    city: 'Kochi',
+    state: 'Kerala',
+    rating: 4.3,
+    reviewCount: 4321,
+    totalProducts: 67,
+    totalOrders: 7890,
+    totalRevenue: 4320000,
+    pendingPayouts: 78000,
+    status: 'pending',
+    joinedAt: '2024-03-15',
+    lastActive: '2024-06-02',
+    bankAccount: { bankName: 'Federal Bank', accountNumber: '****1234', ifsc: 'FDRL0006789' },
+    performanceScore: 75,
+    returnRate: 4.2,
+    cancellationRate: 3.8,
+  },
+  {
+    id: 'sel_008',
+    name: 'OutdoorLiving',
+    ownerName: 'Manish Batra',
+    email: 'manish@outdoorliving.in',
+    phone: '+91 32109 87654',
+    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=OL&backgroundColor=22C55E',
+    gstNumber: '06AACKO6789R1ZT',
+    panNumber: 'AACKO6789R',
+    category: ['Home', 'Outdoor', 'Garden'],
+    city: 'Chandigarh',
+    state: 'Punjab',
+    rating: 4.8,
+    reviewCount: 876,
+    totalProducts: 34,
+    totalOrders: 1230,
+    totalRevenue: 2340000,
+    pendingPayouts: 43000,
+    status: 'active',
+    joinedAt: '2023-08-10',
+    lastActive: '2024-06-01',
+    bankAccount: { bankName: 'Punjab National Bank', accountNumber: '****5678', ifsc: 'PUNB0007890' },
+    performanceScore: 93,
+    returnRate: 1.5,
+    cancellationRate: 1.1,
+  },
+]
+
+export const sellers: Seller[] = rawSellers.map((s) => ({
+  ...s,
+  commissionRate: COMMISSION_MAP[s.id] ?? 12,
+}))
+
+export function getSellerById(id: string): Seller | undefined {
+  return sellers.find((s) => s.id === id)
+}
+
+export function getActiveSellers(): Seller[] {
+  return sellers.filter((s) => s.status === 'active')
+}

@@ -1,0 +1,726 @@
+export interface ProductVariant {
+  id: string
+  type: 'size' | 'color' | 'storage'
+  label: string
+  value: string
+  stock: number
+  priceModifier?: number
+  // Convenience fields for color variants
+  color?: string
+  colorHex?: string
+}
+
+export interface ProductReview {
+  id: string
+  userId: string
+  userName: string
+  rating: number
+  title: string
+  body: string
+  date: string
+  helpful: number
+  verified: boolean
+}
+
+export interface Product {
+  id: string
+  /** Display title */
+  title: string
+  /** Alias for title — used by some pages */
+  name: string
+  description: string
+  category: string
+  subcategory: string
+  brand: string
+  images: string[]
+  /** Full (pre-discount) price in INR */
+  price: number
+  /** Alias for price — used by some pages */
+  originalPrice: number
+  discount: number
+  stock: number
+  /** Alias for stock */
+  stockCount: number
+  /** Derived: stock > 0 */
+  inStock: boolean
+  isNewArrival: boolean
+  sellerId: string
+  sellerName: string
+  sellerRating: number
+  rating: number
+  reviewCount: number
+  tags: string[]
+  variants: ProductVariant[]
+  sizes?: string[]
+  reviews: ProductReview[]
+  isFeatured: boolean
+  isTrending: boolean
+  deliveryDays: number
+  specifications: Record<string, string>
+  weight?: string
+  warranty?: string
+}
+
+// Raw product data — computed alias fields are added by enrichProduct()
+type RawProduct = Omit<Product, 'name' | 'originalPrice' | 'inStock' | 'stockCount' | 'isNewArrival' | 'sizes'>
+
+const NEW_ARRIVAL_IDS = new Set(['p015', 'p017', 'p019', 'p020'])
+
+function enrichProduct(p: RawProduct): Product {
+  return {
+    ...p,
+    name: p.title,
+    originalPrice: p.price,
+    inStock: p.stock > 0,
+    stockCount: p.stock,
+    isNewArrival: NEW_ARRIVAL_IDS.has(p.id),
+    sizes: p.variants.filter((v) => v.type === 'size').map((v) => v.label),
+    variants: p.variants.map((v) => ({
+      ...v,
+      color: v.type === 'color' ? v.label : undefined,
+      colorHex: v.type === 'color' ? v.value : undefined,
+    })),
+  }
+}
+
+const rawProducts: RawProduct[] = [
+  {
+    id: 'p001',
+    title: 'Apple iPhone 15 Pro Max 256GB Natural Titanium',
+    description: 'The iPhone 15 Pro Max features a titanium design, A17 Pro chip, 48MP main camera with 5x telephoto, and USB-C connectivity.',
+    category: 'Electronics',
+    subcategory: 'Smartphones',
+    brand: 'Apple',
+    images: [
+      'https://cdn.dummyjson.com/product-images/smartphones/iphone-13-pro/1.webp',
+      'https://cdn.dummyjson.com/product-images/smartphones/iphone-13-pro/2.webp',
+      'https://cdn.dummyjson.com/product-images/smartphones/iphone-13-pro/3.webp',
+    ],
+    price: 159900,
+    discount: 5,
+    stock: 48,
+    sellerId: 's001',
+    sellerName: 'TechWorld Store',
+    sellerRating: 4.8,
+    rating: 4.7,
+    reviewCount: 2341,
+    tags: ['apple', 'iphone', '5g', 'flagship'],
+    variants: [
+      { id: 'v1', type: 'color', label: 'Natural Titanium', value: '#b0a898', stock: 12 },
+      { id: 'v2', type: 'color', label: 'Blue Titanium', value: '#4a6fa5', stock: 18 },
+      { id: 'v3', type: 'color', label: 'White Titanium', value: '#f0ece6', stock: 10 },
+      { id: 'v4', type: 'storage', label: '256GB', value: '256GB', stock: 24 },
+      { id: 'v5', type: 'storage', label: '512GB', value: '512GB', stock: 14, priceModifier: 10000 },
+      { id: 'v6', type: 'storage', label: '1TB', value: '1TB', stock: 8, priceModifier: 20000 },
+    ],
+    reviews: [
+      { id: 'r1', userId: 'u001', userName: 'Priya S.', rating: 5, title: 'Best iPhone ever!', body: 'The camera improvements are incredible. Night mode is stunning. Build quality is exceptional.', date: '2024-01-15', helpful: 142, verified: true },
+      { id: 'r2', userId: 'u002', userName: 'Rahul M.', rating: 4, title: 'Great phone, pricey', body: 'Performance is top notch. Battery life improved significantly. Worth it if budget allows.', date: '2024-01-10', helpful: 89, verified: true },
+    ],
+    isFeatured: true,
+    isTrending: true,
+    deliveryDays: 2,
+    specifications: { Display: '6.7" Super Retina XDR', Processor: 'A17 Pro', RAM: '8GB', Battery: '4422 mAh', OS: 'iOS 17' },
+  },
+  {
+    id: 'p002',
+    title: 'Samsung Galaxy S24 Ultra 12GB/256GB Titanium Black',
+    description: 'Galaxy S24 Ultra with Snapdragon 8 Gen 3, 200MP camera, built-in S Pen, and 5000mAh battery with 45W fast charging.',
+    category: 'Electronics',
+    subcategory: 'Smartphones',
+    brand: 'Samsung',
+    images: [
+      'https://cdn.dummyjson.com/product-images/smartphones/samsung-galaxy-s10/1.webp',
+      'https://cdn.dummyjson.com/product-images/smartphones/samsung-galaxy-s10/2.webp',
+    ],
+    price: 134999,
+    discount: 8,
+    stock: 62,
+    sellerId: 's002',
+    sellerName: 'MobileHub India',
+    sellerRating: 4.6,
+    rating: 4.6,
+    reviewCount: 1876,
+    tags: ['samsung', 'android', 's-pen', '5g'],
+    variants: [
+      { id: 'v1', type: 'color', label: 'Titanium Black', value: '#2c2c2e', stock: 20 },
+      { id: 'v2', type: 'color', label: 'Titanium Gray', value: '#808080', stock: 15 },
+      { id: 'v3', type: 'storage', label: '256GB', value: '256GB', stock: 30 },
+      { id: 'v4', type: 'storage', label: '512GB', value: '512GB', stock: 20, priceModifier: 8000 },
+    ],
+    reviews: [
+      { id: 'r1', userId: 'u003', userName: 'Anita K.', rating: 5, title: 'S Pen is a game changer', body: 'I use the S Pen daily for note taking. Camera at 200MP is insane quality.', date: '2024-01-20', helpful: 98, verified: true },
+    ],
+    isFeatured: true,
+    isTrending: false,
+    deliveryDays: 2,
+    specifications: { Display: '6.8" Dynamic AMOLED 2X', Processor: 'Snapdragon 8 Gen 3', RAM: '12GB', Battery: '5000 mAh' },
+  },
+  {
+    id: 'p003',
+    title: 'Sony WH-1000XM5 Wireless Noise Cancelling Headphones',
+    description: 'Industry-leading noise cancellation with 30-hour battery, multipoint connection, and crystal clear hands-free calling.',
+    category: 'Electronics',
+    subcategory: 'Audio',
+    brand: 'Sony',
+    images: [
+      'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpods-max-silver/1.webp',
+      'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpods/1.webp',
+    ],
+    price: 29990,
+    discount: 15,
+    stock: 95,
+    sellerId: 's001',
+    sellerName: 'TechWorld Store',
+    sellerRating: 4.8,
+    rating: 4.8,
+    reviewCount: 3120,
+    tags: ['sony', 'headphones', 'noise-cancelling', 'wireless'],
+    variants: [
+      { id: 'v1', type: 'color', label: 'Black', value: '#000000', stock: 50 },
+      { id: 'v2', type: 'color', label: 'Silver', value: '#c0c0c0', stock: 45 },
+    ],
+    reviews: [
+      { id: 'r1', userId: 'u004', userName: 'Vikram P.', rating: 5, title: 'Best ANC headphones', body: 'Noise cancellation is unbelievable. Perfect for travel and work from home.', date: '2024-02-01', helpful: 210, verified: true },
+    ],
+    isFeatured: false,
+    isTrending: true,
+    deliveryDays: 3,
+    specifications: { 'Battery Life': '30 hours', 'Noise Cancellation': 'Yes', Connectivity: 'Bluetooth 5.2', Weight: '250g' },
+  },
+  {
+    id: 'p004',
+    title: 'Nike Air Max 270 React Men\'s Running Shoes',
+    description: 'Nike Air Max 270 React combines two of Nike\'s best cushioning technologies for maximum comfort and style.',
+    category: 'Fashion',
+    subcategory: 'Footwear',
+    brand: 'Nike',
+    images: [
+      'https://cdn.dummyjson.com/product-images/mens-shoes/nike-air-jordan-1-red-and-black/1.webp',
+      'https://cdn.dummyjson.com/product-images/mens-shoes/nike-air-jordan-1-red-and-black/2.webp',
+    ],
+    price: 12995,
+    discount: 20,
+    stock: 156,
+    sellerId: 's003',
+    sellerName: 'SportZone Official',
+    sellerRating: 4.5,
+    rating: 4.4,
+    reviewCount: 892,
+    tags: ['nike', 'running', 'sneakers', 'airmax'],
+    variants: [
+      { id: 'v1', type: 'size', label: 'UK 7', value: 'UK7', stock: 20 },
+      { id: 'v2', type: 'size', label: 'UK 8', value: 'UK8', stock: 35 },
+      { id: 'v3', type: 'size', label: 'UK 9', value: 'UK9', stock: 30 },
+      { id: 'v4', type: 'size', label: 'UK 10', value: 'UK10', stock: 25 },
+      { id: 'v5', type: 'color', label: 'Black/White', value: '#1a1a1a', stock: 60 },
+      { id: 'v6', type: 'color', label: 'Blue/Orange', value: '#1a6ef5', stock: 50 },
+    ],
+    reviews: [
+      { id: 'r1', userId: 'u005', userName: 'Arjun T.', rating: 4, title: 'Very comfortable', body: 'Great for daily running. Cushioning is excellent. True to size.', date: '2024-01-25', helpful: 67, verified: true },
+    ],
+    isFeatured: false,
+    isTrending: true,
+    deliveryDays: 4,
+    specifications: { Material: 'Mesh upper', Sole: 'React foam + Air unit', Closure: 'Lace-up', 'Ideal For': 'Running, Casual' },
+  },
+  {
+    id: 'p005',
+    title: 'Apple MacBook Air M3 13" 8GB/256GB Midnight',
+    description: 'The MacBook Air with M3 chip delivers exceptional performance with up to 18 hours battery life, fanless design, and stunning Liquid Retina display.',
+    category: 'Electronics',
+    subcategory: 'Laptops',
+    brand: 'Apple',
+    images: [
+      'https://cdn.dummyjson.com/product-images/laptops/apple-macbook-pro-14-inch-space-grey/1.webp',
+      'https://cdn.dummyjson.com/product-images/laptops/apple-macbook-pro-14-inch-space-grey/2.webp',
+    ],
+    price: 114900,
+    discount: 3,
+    stock: 34,
+    sellerId: 's001',
+    sellerName: 'TechWorld Store',
+    sellerRating: 4.8,
+    rating: 4.9,
+    reviewCount: 1456,
+    tags: ['apple', 'macbook', 'laptop', 'm3'],
+    variants: [
+      { id: 'v1', type: 'color', label: 'Midnight', value: '#1a1a2e', stock: 12 },
+      { id: 'v2', type: 'color', label: 'Starlight', value: '#f5f0e8', stock: 10 },
+      { id: 'v3', type: 'storage', label: '256GB', value: '256GB', stock: 18 },
+      { id: 'v4', type: 'storage', label: '512GB', value: '512GB', stock: 16, priceModifier: 15000 },
+    ],
+    reviews: [],
+    isFeatured: true,
+    isTrending: false,
+    deliveryDays: 2,
+    specifications: { Chip: 'Apple M3', RAM: '8GB unified memory', Storage: '256GB SSD', Display: '13.6" Liquid Retina', Battery: '18 hours' },
+  },
+  {
+    id: 'p006',
+    title: 'Levi\'s 511 Slim Fit Jeans Men',
+    description: 'The 511 slim fit sits below the waist with a slim fit through the seat and thigh, and a narrow leg opening.',
+    category: 'Fashion',
+    subcategory: 'Men\'s Clothing',
+    brand: 'Levi\'s',
+    images: [
+      'https://cdn.dummyjson.com/product-images/mens-shirts/man-plaid-shirt/1.webp',
+      'https://cdn.dummyjson.com/product-images/mens-shirts/man-plaid-shirt/2.webp',
+    ],
+    price: 3999,
+    discount: 30,
+    stock: 280,
+    sellerId: 's004',
+    sellerName: 'Fashion Forward',
+    sellerRating: 4.3,
+    rating: 4.3,
+    reviewCount: 567,
+    tags: ['levis', 'jeans', 'denim', 'slim-fit'],
+    variants: [
+      { id: 'v1', type: 'size', label: '30x32', value: '30x32', stock: 40 },
+      { id: 'v2', type: 'size', label: '32x32', value: '32x32', stock: 60 },
+      { id: 'v3', type: 'size', label: '34x32', value: '34x32', stock: 55 },
+      { id: 'v4', type: 'size', label: '36x32', value: '36x32', stock: 35 },
+      { id: 'v5', type: 'color', label: 'Dark Wash', value: '#1a2744', stock: 100 },
+      { id: 'v6', type: 'color', label: 'Medium Wash', value: '#4a7ab5', stock: 80 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 5,
+    specifications: { Fit: 'Slim', Rise: 'Mid-rise', Material: '98% Cotton, 2% Elastane', 'Care Instructions': 'Machine wash cold' },
+  },
+  {
+    id: 'p007',
+    title: 'Instant Pot Duo 7-in-1 Electric Pressure Cooker 6 Qt',
+    description: 'The Instant Pot Duo combines 7 kitchen appliances: Pressure Cooker, Slow Cooker, Rice Cooker, Steamer, Sauté, Yogurt Maker & Warmer.',
+    category: 'Home & Kitchen',
+    subcategory: 'Kitchen Appliances',
+    brand: 'Instant Pot',
+    images: [
+      'https://cdn.dummyjson.com/product-images/kitchen-accessories/silver-pot-with-glass-cap/1.webp',
+    ],
+    price: 8999,
+    discount: 25,
+    stock: 142,
+    sellerId: 's005',
+    sellerName: 'HomeComfort Store',
+    sellerRating: 4.4,
+    rating: 4.6,
+    reviewCount: 4231,
+    tags: ['instant-pot', 'pressure-cooker', 'kitchen'],
+    variants: [
+      { id: 'v1', type: 'size', label: '3 Qt', value: '3Qt', stock: 40 },
+      { id: 'v2', type: 'size', label: '6 Qt', value: '6Qt', stock: 70 },
+      { id: 'v3', type: 'size', label: '8 Qt', value: '8Qt', stock: 32 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 3,
+    specifications: { Capacity: '6 quarts', Functions: '7-in-1', Material: 'Stainless steel', Wattage: '1000W' },
+  },
+  {
+    id: 'p008',
+    title: 'Lakme Absolute Skin Natural Mousse SPF 8 PA++',
+    description: 'Lakme Absolute Skin Natural Mousse provides natural-looking coverage with SPF 8 protection. Lightweight, breathable formula.',
+    category: 'Beauty',
+    subcategory: 'Foundation',
+    brand: 'Lakme',
+    images: [
+      'https://cdn.dummyjson.com/product-images/beauty/powder-canister/1.webp',
+    ],
+    price: 849,
+    discount: 10,
+    stock: 450,
+    sellerId: 's006',
+    sellerName: 'Beauty Essentials',
+    sellerRating: 4.2,
+    rating: 4.1,
+    reviewCount: 2890,
+    tags: ['lakme', 'foundation', 'makeup', 'spf'],
+    variants: [
+      { id: 'v1', type: 'color', label: 'Rose Ivory', value: '#f5dcd0', stock: 100 },
+      { id: 'v2', type: 'color', label: 'Beige Honey', value: '#d4a574', stock: 120 },
+      { id: 'v3', type: 'color', label: 'Warm Ivory', value: '#e8c9a0', stock: 90 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 4,
+    specifications: { 'SPF': 'SPF 8 PA++', Coverage: 'Medium', Finish: 'Natural matte', Volume: '25g' },
+  },
+  {
+    id: 'p009',
+    title: 'Boat Rockerz 550 Wireless Bluetooth On-Ear Headphone',
+    description: 'boAt Rockerz 550 is a wireless headphone that rocks superior audio performance with 40mm dynamic drivers and 20 hours playback.',
+    category: 'Electronics',
+    subcategory: 'Audio',
+    brand: 'boAt',
+    images: [
+      'https://cdn.dummyjson.com/product-images/mobile-accessories/beats-flex-wireless-earphones/1.webp',
+    ],
+    price: 1799,
+    discount: 55,
+    stock: 320,
+    sellerId: 's002',
+    sellerName: 'MobileHub India',
+    sellerRating: 4.6,
+    rating: 4.2,
+    reviewCount: 12450,
+    tags: ['boat', 'headphones', 'wireless', 'budget'],
+    variants: [
+      { id: 'v1', type: 'color', label: 'Navy Blue', value: '#1a2a6c', stock: 100 },
+      { id: 'v2', type: 'color', label: 'Black', value: '#000000', stock: 120 },
+      { id: 'v3', type: 'color', label: 'Red', value: '#dc2626', stock: 60 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: true,
+    deliveryDays: 3,
+    specifications: { 'Battery': '20 hours', 'Driver': '40mm', Connectivity: 'Bluetooth 5.0', Weight: '220g' },
+  },
+  {
+    id: 'p010',
+    title: 'IKEA MALM High Bed Frame with 4 Storage Boxes',
+    description: 'MALM bed frame with 4 large drawers for storage. Clean Scandinavian design that fits any bedroom style.',
+    category: 'Home & Kitchen',
+    subcategory: 'Furniture',
+    brand: 'IKEA',
+    images: [
+      'https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-bed/1.webp',
+      'https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-bed/2.webp',
+    ],
+    price: 24999,
+    discount: 0,
+    stock: 28,
+    sellerId: 's005',
+    sellerName: 'HomeComfort Store',
+    sellerRating: 4.4,
+    rating: 4.5,
+    reviewCount: 678,
+    tags: ['ikea', 'bed', 'furniture', 'storage'],
+    variants: [
+      { id: 'v1', type: 'color', label: 'White', value: '#ffffff', stock: 12 },
+      { id: 'v2', type: 'color', label: 'Black-brown', value: '#1a0a00', stock: 10 },
+      { id: 'v3', type: 'size', label: 'Queen', value: 'Queen', stock: 14 },
+      { id: 'v4', type: 'size', label: 'King', value: 'King', stock: 8, priceModifier: 5000 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 7,
+    specifications: { Material: 'Fiberboard, Particleboard', Dimensions: '160×200 cm', Load: '250 kg', Assembly: 'Required' },
+  },
+  {
+    id: 'p011',
+    title: 'Zara Oversized Blazer Women',
+    description: 'Tailored oversized blazer in a relaxed fit. Features notched lapels, welt pockets, and button closure. Perfect for office or casual wear.',
+    category: 'Fashion',
+    subcategory: 'Women\'s Clothing',
+    brand: 'Zara',
+    images: [
+      'https://cdn.dummyjson.com/product-images/womens-dresses/marni-red-&-black-suit/1.webp',
+    ],
+    price: 5990,
+    discount: 0,
+    stock: 89,
+    sellerId: 's004',
+    sellerName: 'Fashion Forward',
+    sellerRating: 4.3,
+    rating: 4.2,
+    reviewCount: 234,
+    tags: ['zara', 'blazer', 'women', 'office'],
+    variants: [
+      { id: 'v1', type: 'size', label: 'XS', value: 'XS', stock: 15 },
+      { id: 'v2', type: 'size', label: 'S', value: 'S', stock: 25 },
+      { id: 'v3', type: 'size', label: 'M', value: 'M', stock: 30 },
+      { id: 'v4', type: 'size', label: 'L', value: 'L', stock: 19 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 5,
+    specifications: { Fit: 'Oversized', Material: '60% Polyester, 40% Viscose', Care: 'Dry clean only' },
+  },
+  {
+    id: 'p012',
+    title: 'Dyson V15 Detect Absolute Cordless Vacuum Cleaner',
+    description: 'The Dyson V15 Detect automatically adapts suction to the floor type, with laser dust detection and HEPA filtration.',
+    category: 'Home & Kitchen',
+    subcategory: 'Cleaning',
+    brand: 'Dyson',
+    images: [
+      'https://cdn.dummyjson.com/product-images/kitchen-accessories/hand-blender/1.webp',
+    ],
+    price: 54900,
+    discount: 10,
+    stock: 22,
+    sellerId: 's005',
+    sellerName: 'HomeComfort Store',
+    sellerRating: 4.4,
+    rating: 4.7,
+    reviewCount: 890,
+    tags: ['dyson', 'vacuum', 'cordless', 'cleaning'],
+    variants: [],
+    reviews: [],
+    isFeatured: true,
+    isTrending: false,
+    deliveryDays: 3,
+    specifications: { Suction: '230 AW', Battery: '60 min', Filtration: 'HEPA', Weight: '3.1 kg' },
+  },
+  {
+    id: 'p013',
+    title: 'Himalaya Herbals Purifying Neem Face Wash 150ml',
+    description: 'Himalaya Neem Face Wash uses the natural purifying properties of Neem to fight acne-causing bacteria and keep skin clear.',
+    category: 'Beauty',
+    subcategory: 'Skincare',
+    brand: 'Himalaya',
+    images: [
+      'https://cdn.dummyjson.com/product-images/skin-care/olay-ultra-moisture-shea-butter-body-wash/1.webp',
+    ],
+    price: 175,
+    discount: 15,
+    stock: 1200,
+    sellerId: 's006',
+    sellerName: 'Beauty Essentials',
+    sellerRating: 4.2,
+    rating: 4.4,
+    reviewCount: 18920,
+    tags: ['himalaya', 'face-wash', 'neem', 'skincare'],
+    variants: [
+      { id: 'v1', type: 'size', label: '75ml', value: '75ml', stock: 400 },
+      { id: 'v2', type: 'size', label: '150ml', value: '150ml', stock: 500 },
+      { id: 'v3', type: 'size', label: '300ml', value: '300ml', stock: 300, priceModifier: 120 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 4,
+    specifications: { Type: 'Gel face wash', 'Key Ingredient': 'Neem', 'Skin Type': 'Oily to normal', Volume: '150ml' },
+  },
+  {
+    id: 'p014',
+    title: 'Philips 43" 4K UHD Android Smart LED TV',
+    description: 'Philips 43-inch 4K Ultra HD Smart TV with Android 10, Chromecast built-in, HDR10+, and Dolby Vision for a cinematic experience.',
+    category: 'Electronics',
+    subcategory: 'Televisions',
+    brand: 'Philips',
+    images: [
+      'https://cdn.dummyjson.com/product-images/tablets/samsung-galaxy-tab-s8-plus-grey/1.webp',
+      'https://cdn.dummyjson.com/product-images/tablets/samsung-galaxy-tab-s8-plus-grey/2.webp',
+    ],
+    price: 34990,
+    discount: 18,
+    stock: 45,
+    sellerId: 's001',
+    sellerName: 'TechWorld Store',
+    sellerRating: 4.8,
+    rating: 4.3,
+    reviewCount: 1230,
+    tags: ['philips', '4k', 'smart-tv', 'android'],
+    variants: [
+      { id: 'v1', type: 'size', label: '43"', value: '43inch', stock: 20 },
+      { id: 'v2', type: 'size', label: '50"', value: '50inch', stock: 15, priceModifier: 8000 },
+      { id: 'v3', type: 'size', label: '55"', value: '55inch', stock: 10, priceModifier: 15000 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 5,
+    specifications: { Resolution: '4K UHD 3840×2160', HDR: 'HDR10+, Dolby Vision', 'Smart TV': 'Android 10', Audio: 'Dolby Atmos 20W' },
+  },
+  {
+    id: 'p015',
+    title: 'Adidas Ultraboost 23 Men\'s Running Shoes',
+    description: 'Ultraboost 23 with BOOST midsole technology, Primeknit+ upper, and Continental™ rubber outsole for responsive running.',
+    category: 'Fashion',
+    subcategory: 'Footwear',
+    brand: 'Adidas',
+    images: [
+      'https://cdn.dummyjson.com/product-images/mens-shoes/puma-future-rider-trainers/1.webp',
+      'https://cdn.dummyjson.com/product-images/mens-shoes/puma-future-rider-trainers/2.webp',
+    ],
+    price: 16999,
+    discount: 12,
+    stock: 98,
+    sellerId: 's003',
+    sellerName: 'SportZone Official',
+    sellerRating: 4.5,
+    rating: 4.5,
+    reviewCount: 1543,
+    tags: ['adidas', 'ultraboost', 'running', 'shoes'],
+    variants: [
+      { id: 'v1', type: 'size', label: 'UK 7', value: 'UK7', stock: 15 },
+      { id: 'v2', type: 'size', label: 'UK 8', value: 'UK8', stock: 30 },
+      { id: 'v3', type: 'size', label: 'UK 9', value: 'UK9', stock: 28 },
+      { id: 'v4', type: 'size', label: 'UK 10', value: 'UK10', stock: 25 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: true,
+    deliveryDays: 4,
+    specifications: { Upper: 'Primeknit+', Midsole: 'BOOST', Outsole: 'Continental rubber', Drop: '10mm' },
+  },
+  {
+    id: 'p016',
+    title: 'Nescafé Gold Blend Coffee 200g',
+    description: 'Nescafé Gold is a premium blend of finely roasted coffee beans creating a smooth, rich-tasting cup.',
+    category: 'Food & Grocery',
+    subcategory: 'Beverages',
+    brand: 'Nescafé',
+    images: [
+      'https://cdn.dummyjson.com/product-images/groceries/nescafe-coffee/1.webp',
+    ],
+    price: 599,
+    discount: 5,
+    stock: 3000,
+    sellerId: 's007',
+    sellerName: 'GroceryMart',
+    sellerRating: 4.0,
+    rating: 4.3,
+    reviewCount: 7823,
+    tags: ['nescafe', 'coffee', 'instant', 'gold'],
+    variants: [
+      { id: 'v1', type: 'size', label: '100g', value: '100g', stock: 1000 },
+      { id: 'v2', type: 'size', label: '200g', value: '200g', stock: 1200 },
+      { id: 'v3', type: 'size', label: '500g', value: '500g', stock: 800, priceModifier: 800 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 2,
+    specifications: { Type: 'Instant coffee', Roast: 'Medium', 'Net Weight': '200g', Caffeine: 'Contains caffeine' },
+  },
+  {
+    id: 'p017',
+    title: 'Fastrack Limitless FS1 Pro Smartwatch',
+    description: 'Fastrack FS1 Pro smartwatch with 1.96" AMOLED display, Bluetooth calling, 100+ sports modes, and 5-day battery life.',
+    category: 'Electronics',
+    subcategory: 'Wearables',
+    brand: 'Fastrack',
+    images: [
+      'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-watch-series-4-gold/1.webp',
+      'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-watch-series-4-gold/2.webp',
+    ],
+    price: 2995,
+    discount: 40,
+    stock: 567,
+    sellerId: 's002',
+    sellerName: 'MobileHub India',
+    sellerRating: 4.6,
+    rating: 4.0,
+    reviewCount: 8932,
+    tags: ['fastrack', 'smartwatch', 'bt-calling', 'amoled'],
+    variants: [
+      { id: 'v1', type: 'color', label: 'Black', value: '#000000', stock: 200 },
+      { id: 'v2', type: 'color', label: 'Blue', value: '#1a6ef5', stock: 180 },
+      { id: 'v3', type: 'color', label: 'Pink', value: '#f472b6', stock: 120 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: true,
+    deliveryDays: 3,
+    specifications: { Display: '1.96" AMOLED', Battery: '5 days', 'Bluetooth Calling': 'Yes', 'Sports Modes': '100+' },
+  },
+  {
+    id: 'p018',
+    title: 'Prestige Iris 750W Mixer Grinder 3 Jars',
+    description: 'Prestige Iris 750W mixer grinder with 3 stainless steel jars, 3-speed control with incher, and anti-rust body.',
+    category: 'Home & Kitchen',
+    subcategory: 'Kitchen Appliances',
+    brand: 'Prestige',
+    images: [
+      'https://cdn.dummyjson.com/product-images/kitchen-accessories/boxed-blender/1.webp',
+      'https://cdn.dummyjson.com/product-images/kitchen-accessories/boxed-blender/2.webp',
+    ],
+    price: 3295,
+    discount: 22,
+    stock: 230,
+    sellerId: 's005',
+    sellerName: 'HomeComfort Store',
+    sellerRating: 4.4,
+    rating: 4.4,
+    reviewCount: 5678,
+    tags: ['prestige', 'mixer', 'grinder', 'kitchen'],
+    variants: [],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 4,
+    specifications: { Wattage: '750W', Jars: '3', 'Motor Speed': '18000 RPM', Warranty: '2 years' },
+  },
+  {
+    id: 'p019',
+    title: 'The Ordinary Hyaluronic Acid 2% + B5 Serum 30ml',
+    description: 'Multi-depth hydration serum with low, medium, and high molecular weight hyaluronic acid for multiple skin layers.',
+    category: 'Beauty',
+    subcategory: 'Skincare',
+    brand: 'The Ordinary',
+    images: [
+      'https://cdn.dummyjson.com/product-images/fragrances/calvin-klein-ck-one/1.webp',
+    ],
+    price: 1050,
+    discount: 0,
+    stock: 890,
+    sellerId: 's006',
+    sellerName: 'Beauty Essentials',
+    sellerRating: 4.2,
+    rating: 4.6,
+    reviewCount: 3421,
+    tags: ['the-ordinary', 'serum', 'hyaluronic-acid', 'skincare'],
+    variants: [],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 4,
+    specifications: { 'Key Ingredient': 'Hyaluronic Acid 2%', Volume: '30ml', 'Skin Type': 'All skin types', Texture: 'Lightweight serum' },
+  },
+  {
+    id: 'p020',
+    title: 'Wildcraft Granite 45L Laptop Backpack',
+    description: 'Wildcraft Granite 45L with dedicated laptop compartment, rain cover, multiple organizer pockets, and ergonomic back panel.',
+    category: 'Fashion',
+    subcategory: 'Bags',
+    brand: 'Wildcraft',
+    images: [
+      'https://cdn.dummyjson.com/product-images/womens-bags/white-faux-leather-backpack/1.webp',
+      'https://cdn.dummyjson.com/product-images/womens-bags/white-faux-leather-backpack/2.webp',
+    ],
+    price: 2499,
+    discount: 35,
+    stock: 345,
+    sellerId: 's004',
+    sellerName: 'Fashion Forward',
+    sellerRating: 4.3,
+    rating: 4.3,
+    reviewCount: 2134,
+    tags: ['wildcraft', 'backpack', 'laptop', 'travel'],
+    variants: [
+      { id: 'v1', type: 'color', label: 'Black', value: '#000000', stock: 120 },
+      { id: 'v2', type: 'color', label: 'Grey', value: '#808080', stock: 100 },
+      { id: 'v3', type: 'color', label: 'Olive Green', value: '#556b2f', stock: 80 },
+    ],
+    reviews: [],
+    isFeatured: false,
+    isTrending: false,
+    deliveryDays: 4,
+    specifications: { Capacity: '45L', 'Laptop Fit': 'Up to 17"', Material: 'Nylon', 'Rain Cover': 'Included' },
+  },
+]
+
+// ── Enriched products array (with computed alias fields) ─────────────────────
+export const products: Product[] = rawProducts.map(enrichProduct)
+
+// ── Named convenience exports ──────────────────────────────────────────────
+export const featuredProducts = products.filter((p) => p.isFeatured)
+export const bestSellers = [...products].sort((a, b) => b.reviewCount - a.reviewCount).slice(0, 8)
+export const newArrivals = products.filter((p) => p.isNewArrival)
+export const trendingProducts = products.filter((p) => p.isTrending)
+
+// ── Query helpers ──────────────────────────────────────────────────────────
+export const getProductById = (id: string) => products.find((p) => p.id === id)
+export const getFeaturedProducts = () => featuredProducts
+export const getTrendingProducts = () => trendingProducts
+export const getProductsByCategory = (cat: string) => products.filter((p) => p.category === cat)
+export const getProductsBySeller = (sellerId: string) => products.filter((p) => p.sellerId === sellerId)
