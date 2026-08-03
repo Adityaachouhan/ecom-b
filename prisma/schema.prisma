@@ -13,6 +13,7 @@ enum Role {
   manager
   admin
   superadmin
+  delivery
 }
 
 enum CustomerStatus {
@@ -100,13 +101,14 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  customer       Customer?
-  addresses      Address[]
-  paymentMethods PaymentMethod[]
-  cartItems      CartItem[]
-  wishlistItems  WishlistItem[]
-  notifications  Notification[]
-  orders         Order[]         @relation("CustomerOrders")
+  customer        Customer?
+  addresses       Address[]
+  paymentMethods  PaymentMethod[]
+  cartItems       CartItem[]
+  wishlistItems   WishlistItem[]
+  notifications   Notification[]
+  orders          Order[]          @relation("CustomerOrders")
+  deliveryPartner DeliveryPartner?
 }
 
 model Customer {
@@ -156,8 +158,10 @@ model Seller {
   performanceScore  Float        @default(0)
   returnRate        Float        @default(0)
   cancellationRate  Float        @default(0)
+  shippingSettings  Json?
   products          Product[]
   payouts           Payout[]
+  settlements       SellerSettlement[]
   campaigns         Campaign[]
   returns           ReturnRequest[]
 }
@@ -220,14 +224,16 @@ model Product {
 }
 
 model ProductVariant {
-  id            String  @id
+  id            String   @id
   productId     String
   type          String
   label         String
   value         String
-  stock         Int     @default(0)
+  stock         Int      @default(0)
   priceModifier Float?
-  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// Optional per-variant image set (e.g. distinct photos per color). Falls back to Product.images when empty.
+  images        String[] @default([])
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Review {
@@ -272,6 +278,8 @@ model Order {
   customer          User              @relation("CustomerOrders", fields: [customerId], references: [id])
   items             OrderItem[]
   returns           ReturnRequest[]
+  deliveries        Delivery[]
+  shipment          Shipment?
 }
 
 model OrderItem {
@@ -451,6 +459,24 @@ model Payout {
   seller   Seller    @relation(fields: [sellerId], references: [id])
 }
 
+model SellerSettlement {
+  id               String    @id
+  sellerId         String
+  orderId          String
+  orderDate        DateTime?
+  orderAmount      Float
+  commissionRate   Float
+  commissionAmount Float
+  netAmount        Float
+  status           String    @default("pending") // pending | processing | paid
+  payoutDate       DateTime?
+  createdAt        DateTime  @default(now())
+  seller           Seller    @relation(fields: [sellerId], references: [id])
+
+  @@unique([orderId, sellerId])
+  @@index([sellerId, status])
+}
+
 model AuditLog {
   id        String   @id
   actor     String
@@ -493,8 +519,8 @@ model Notification {
 
 model PlatformConfig {
   id                    Int     @id @default(1)
-  siteName              String  @default("Uniqora")
-  supportEmail          String  @default("support@uniqora.com")
+  siteName              String  @default("Riviraa")
+  supportEmail          String  @default("support@riviraa.com")
   defaultCommission     Float   @default(12)
   minPayoutAmount       Float   @default(1000)
   freeShippingThreshold Float   @default(499)
@@ -503,9 +529,112 @@ model PlatformConfig {
   maintenanceMode       Boolean @default(false)
   otpExpiryMinutes      Int     @default(10)
   returnWindowDays      Int     @default(7)
+  deliveryMode          String  @default("own_fleet") // own_fleet | third_party | mixed
+  shippingPriority      String  @default("cost") // cost | speed
+  lowStockThreshold     Int     @default(10)
+}
+
+model NotificationTemplate {
+  id           String @id @default(cuid())
+  eventType    String
+  channel      String // email | sms | push
+  subject      String?
+  bodyTemplate String
+
+  @@unique([eventType, channel])
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String
+  channel   String
+  status    String // sent | failed
+  sentAt    DateTime @default(now())
+  refId     String?
+}
+
+model Shipment {
+  id           String   @id @default(cuid())
+  orderId      String   @unique
+  deliveryMode String // own_fleet | third_party
+  providerName String?
+  awbNumber    String?
+  trackingUrl  String?
+  rateCharged  Float?
+  status       String   @default("created")
+  createdAt    DateTime @default(now())
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model AnalyticsSnapshot {
   id    Int  @id @default(1)
   data  Json
+}
+
+model DeliveryPartner {
+  id                  String            @id @default(cuid())
+  userId              String            @unique
+  name                String
+  phone               String            @default("")
+  email               String
+  vehicleType         String            @default("bike")
+  kycStatus           String            @default("pending")
+  kycDocuments        Json              @default("{}")
+  availabilityStatus  String            @default("offline")
+  currentLat          Float?
+  currentLng          Float?
+  rating              Float             @default(5)
+  totalDeliveries     Int               @default(0)
+  consecutiveFailures Int               @default(0)
+  joinedDate          DateTime          @default(now())
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries          Delivery[]
+  earnings            DeliveryEarning[]
+}
+
+model Delivery {
+  id                String           @id @default(cuid())
+  orderId           String
+  deliveryPartnerId String?
+  pickupAddress     String
+  dropAddress       String
+  pickupLat         Float?
+  pickupLng         Float?
+  dropLat           Float?
+  dropLng           Float?
+  packageType       String           @default("medium")
+  paymentType       String           @default("prepaid")
+  codAmount         Float            @default(0)
+  status            String           @default("assigned")
+  assignedAt        DateTime         @default(now())
+  acceptedAt        DateTime?
+  pickedUpAt        DateTime?
+  outForDeliveryAt  DateTime?
+  deliveredAt       DateTime?
+  failureReason     String?
+  failureNote       String?
+  reattemptOf       String?
+  otpCode           String?
+  proofImageUrl     String?
+  codSubmitted      Boolean          @default(false)
+  triedPartnerIds   String[]         @default([])
+  order             Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  deliveryPartner   DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id])
+  earning           DeliveryEarning?
+}
+
+model DeliveryEarning {
+  id                String          @id @default(cuid())
+  deliveryPartnerId String
+  deliveryId        String          @unique
+  baseFee           Float
+  distanceBonus     Float           @default(0)
+  peakBonus         Float           @default(0)
+  total             Float
+  payoutStatus      String          @default("pending")
+  payoutDate        DateTime?
+  createdAt         DateTime        @default(now())
+  deliveryPartner   DeliveryPartner @relation(fields: [deliveryPartnerId], references: [id])
+  delivery          Delivery        @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
 }

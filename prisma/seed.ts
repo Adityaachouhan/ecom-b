@@ -27,6 +27,9 @@ async function main() {
   console.log('Seeding database...')
 
   // Clear in dependency order
+  await prisma.deliveryEarning.deleteMany()
+  await prisma.delivery.deleteMany()
+  await prisma.deliveryPartner.deleteMany()
   await prisma.orderItem.deleteMany()
   await prisma.returnRequest.deleteMany()
   await prisma.order.deleteMany()
@@ -38,6 +41,7 @@ async function main() {
   await prisma.subcategory.deleteMany()
   await prisma.category.deleteMany()
   await prisma.payout.deleteMany()
+  await prisma.sellerSettlement.deleteMany()
   await prisma.ad.deleteMany()
   await prisma.campaign.deleteMany()
   await prisma.address.deleteMany()
@@ -65,6 +69,7 @@ async function main() {
     { id: 'mgr_001', email: 'anita.verma@marketplace.com', name: 'Anita Verma', role: Role.manager, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anita', phone: '+91 90000 11111', joinedAt: '2021-08-01' },
     { id: 'adm_001', email: 'vikram.singh@marketplace.com', name: 'Vikram Singh', role: Role.admin, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Vikram', phone: '+91 88000 99999', joinedAt: '2020-03-15' },
     { id: 'sad_001', email: 'root@marketplace.com', name: 'CEO Root', role: Role.superadmin, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Root', phone: '+91 80000 00001', joinedAt: '2019-01-01' },
+    { id: 'dlv_001', email: 'arjun.rider@riviraa.com', name: 'Arjun Rider', role: Role.delivery, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Arjun', phone: '+91 98765 11111', joinedAt: '2024-01-15' },
   ]
 
   for (const u of staff) {
@@ -82,6 +87,31 @@ async function main() {
       },
     })
   }
+
+  await prisma.deliveryPartner.create({
+    data: {
+      id: 'dp_001',
+      userId: 'dlv_001',
+      name: 'Arjun Rider',
+      phone: '+91 98765 11111',
+      email: 'arjun.rider@riviraa.com',
+      vehicleType: 'bike',
+      kycStatus: 'approved',
+      kycDocuments: {
+        aadhaar: { url: 'https://example.com/aadhaar.pdf', status: 'verified' },
+        pan: { url: 'https://example.com/pan.pdf', status: 'verified' },
+        dl: { url: 'https://example.com/dl.pdf', status: 'verified' },
+        rc: { url: 'https://example.com/rc.pdf', status: 'verified' },
+      },
+      availabilityStatus: 'online',
+      currentLat: 12.9716,
+      currentLng: 77.5946,
+      rating: 4.8,
+      totalDeliveries: 142,
+      consecutiveFailures: 0,
+      joinedDate: new Date('2024-01-15'),
+    },
+  })
 
   // Sellers first (products depend on them)
   for (const s of seedSellers) {
@@ -450,6 +480,28 @@ async function main() {
         status: 'active',
         displayOrder: 0,
       },
+      {
+        id: 'ad_products_top_1',
+        image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1400&q=90',
+        title: 'Member deals, refreshed weekly',
+        link: '/products?deals=true',
+        placement: 'PRODUCTS_TOP_BANNER',
+        startDate: new Date('2024-06-01'),
+        endDate: new Date('2027-12-31'),
+        status: 'active',
+        displayOrder: 0,
+      },
+      {
+        id: 'ad_products_inline_1',
+        image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1200&q=90',
+        title: 'New season essentials',
+        link: '/products?new=true',
+        placement: 'PRODUCTS_INLINE_BANNER',
+        startDate: new Date('2024-06-01'),
+        endDate: new Date('2027-12-31'),
+        status: 'active',
+        displayOrder: 0,
+      },
     ],
   })
 
@@ -476,6 +528,48 @@ async function main() {
       { id: 'pay_001', sellerId: 'sel_001', amount: 145000, status: 'pending', period: '2024-06' },
       { id: 'pay_002', sellerId: 'sel_001', amount: 128000, status: 'paid', period: '2024-05', paidAt: new Date('2024-06-05') },
       { id: 'pay_003', sellerId: 'sel_001', amount: 112000, status: 'paid', period: '2024-04', paidAt: new Date('2024-05-05') },
+    ],
+  })
+
+  await prisma.sellerSettlement.createMany({
+    data: [
+      {
+        id: 'stl_001',
+        sellerId: 'sel_001',
+        orderId: 'ORD-2024-001',
+        orderDate: new Date('2024-05-10T10:30:00Z'),
+        orderAmount: 134900,
+        commissionRate: 8,
+        commissionAmount: 10792,
+        netAmount: 124108,
+        status: 'pending',
+        createdAt: new Date('2024-05-12T15:45:00Z'),
+      },
+      {
+        id: 'stl_002',
+        sellerId: 'sel_003',
+        orderId: 'ORD-DEMO-PAID-1',
+        orderDate: new Date('2024-04-01T10:00:00Z'),
+        orderAmount: 45000,
+        commissionRate: 6,
+        commissionAmount: 2700,
+        netAmount: 42300,
+        status: 'paid',
+        payoutDate: new Date('2024-04-20'),
+        createdAt: new Date('2024-04-05T12:00:00Z'),
+      },
+      {
+        id: 'stl_003',
+        sellerId: 'sel_001',
+        orderId: 'ORD-DEMO-PROC-1',
+        orderDate: new Date('2024-05-01T09:00:00Z'),
+        orderAmount: 24990,
+        commissionRate: 8,
+        commissionAmount: 1999.2,
+        netAmount: 22990.8,
+        status: 'processing',
+        createdAt: new Date('2024-05-08T10:00:00Z'),
+      },
     ],
   })
 
@@ -515,8 +609,8 @@ async function main() {
   await prisma.platformConfig.create({
     data: {
       id: 1,
-      siteName: 'Uniqora',
-      supportEmail: 'support@uniqora.com',
+      siteName: 'Riviraa',
+      supportEmail: 'support@riviraa.com',
       defaultCommission: 12,
       minPayoutAmount: 1000,
       freeShippingThreshold: 499,
@@ -525,7 +619,23 @@ async function main() {
       maintenanceMode: false,
       otpExpiryMinutes: 10,
       returnWindowDays: 7,
+      deliveryMode: 'own_fleet',
+      shippingPriority: 'cost',
+      lowStockThreshold: 10,
     },
+  })
+
+  const { defaultTemplates } = await import('../src/lib/notifications.js')
+  const templates = defaultTemplates()
+  await prisma.notificationTemplate.createMany({
+    data: templates.map((t) => ({
+      id: t.id,
+      eventType: t.eventType,
+      channel: t.channel,
+      subject: t.subject ?? null,
+      bodyTemplate: t.bodyTemplate,
+    })),
+    skipDuplicates: true,
   })
 
   await prisma.analyticsSnapshot.create({

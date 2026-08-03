@@ -28,6 +28,12 @@ export interface Seller {
     performanceScore: number;
     returnRate: number;
     cancellationRate: number;
+    shippingSettings?: {
+        freeShippingAbove: number;
+        standardFee: number;
+        expressFee: number;
+        processingDays: number;
+    };
 }
 export declare const sellers: Seller[];
 export declare function getSellerById(id: string): Seller | undefined;

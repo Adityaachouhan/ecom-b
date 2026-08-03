@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, logAudit } from '../store/db.js';
-import { saveAlert, savePlatformConfig, saveTeamMember } from '../store/persist.js';
+import { saveAlert, savePlatformConfig, savePayout, saveTeamMember } from '../store/persist.js';
 import { authenticate, requireRoles } from '../middleware/auth.js';
 import { fail, generateId, paginate, success, todayISO } from '../utils/helpers.js';
 const router = Router();
@@ -74,6 +74,34 @@ router.get('/finance/pl', (_req, res) => {
 });
 router.get('/finance/payouts', (_req, res) => {
     res.json(success({ summary: db.finance.payoutsSummary, payouts: db.payouts }));
+});
+/** PATCH /api/superadmin/finance/payouts/:id — mark payout paid (Feature 4 trigger) */
+router.patch('/finance/payouts/:id', async (req, res, next) => {
+    try {
+        const payout = db.payouts.find((p) => p.id === req.params.id);
+        if (!payout)
+            throw fail('Payout not found', 404);
+        if (req.body.status)
+            payout.status = req.body.status;
+        if (payout.status === 'paid') {
+            payout.paidAt = payout.paidAt || new Date().toISOString().slice(0, 10);
+            const { sendNotification } = await import('../lib/notifications.js');
+            const sellerAccount = db.accounts.find((a) => a.sellerId === payout.sellerId || a.id === payout.sellerId);
+            if (sellerAccount) {
+                await sendNotification('payout_processed', sellerAccount.id, {
+                    amount: payout.amount,
+                    period: payout.period,
+                    refId: payout.id,
+                });
+            }
+        }
+        await savePayout(payout);
+        logAudit(req.user.email, 'UPDATE_PAYOUT', payout.id, `Status → ${payout.status}`);
+        res.json(success(payout, 'Payout updated'));
+    }
+    catch (e) {
+        next(e);
+    }
 });
 /** Alerts */
 router.get('/alerts', (req, res) => {

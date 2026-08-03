@@ -55,8 +55,10 @@ router.post('/confirm', async (req, res, next) => {
     }
 
     order.paymentStatus = 'paid'
+    let justConfirmed = false
     if (order.status === 'pending') {
       order.status = 'confirmed'
+      justConfirmed = true
       order.trackingEvents = [
         { status: 'Order Placed', description: 'Order confirmed', timestamp: nowISO(), location: 'Bangalore Hub', isCompleted: true, isCurrent: false },
         { status: 'Confirmed', description: 'Seller confirmed', timestamp: nowISO(), location: 'Bangalore Hub', isCompleted: true, isCurrent: true },
@@ -67,6 +69,18 @@ router.post('/confirm', async (req, res, next) => {
       ]
     }
     await saveOrder(order)
+
+    if (justConfirmed || order.status === 'confirmed') {
+      const { fulfillOrder } = await import('../lib/shipping/index.js')
+      await fulfillOrder(order)
+      if (justConfirmed) {
+        const { sendNotification } = await import('../lib/notifications.js')
+        await sendNotification('order_confirmed', order.customerId, {
+          orderId: order.id,
+          refId: `${order.id}:confirmed`,
+        })
+      }
+    }
 
     db.carts[req.user!.id] = []
     await clearCart(req.user!.id)

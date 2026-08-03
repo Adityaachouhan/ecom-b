@@ -11,7 +11,7 @@ function dateOnly(d) {
 }
 /** Load all tables from PostgreSQL into the in-memory store shape used by routes. */
 export async function hydrateFromDatabase(target) {
-    const [users, customers, sellers, categories, products, orders, addresses, paymentMethods, cartItems, wishlistItems, coupons, flaggedReviews, flaggedProducts, moderationStats, escalations, approvals, campaigns, ads, returns, payouts, auditLogs, team, alerts, notifications, platformConfig, analyticsSnapshot,] = await Promise.all([
+    const [users, customers, sellers, categories, products, orders, addresses, paymentMethods, cartItems, wishlistItems, coupons, flaggedReviews, flaggedProducts, moderationStats, escalations, approvals, campaigns, ads, returns, payouts, settlements, auditLogs, team, alerts, notifications, platformConfig, analyticsSnapshot, deliveryPartners, deliveries, deliveryEarnings, shipments, notificationTemplates, notificationLogs,] = await Promise.all([
         prisma.user.findMany(),
         prisma.customer.findMany(),
         prisma.seller.findMany(),
@@ -32,12 +32,19 @@ export async function hydrateFromDatabase(target) {
         prisma.ad.findMany(),
         prisma.returnRequest.findMany(),
         prisma.payout.findMany(),
+        prisma.sellerSettlement.findMany(),
         prisma.auditLog.findMany({ orderBy: { timestamp: 'desc' } }),
         prisma.teamMember.findMany(),
         prisma.alert.findMany(),
         prisma.notification.findMany(),
         prisma.platformConfig.findUnique({ where: { id: 1 } }),
         prisma.analyticsSnapshot.findUnique({ where: { id: 1 } }),
+        prisma.deliveryPartner.findMany(),
+        prisma.delivery.findMany(),
+        prisma.deliveryEarning.findMany(),
+        prisma.shipment.findMany(),
+        prisma.notificationTemplate.findMany(),
+        prisma.notificationLog.findMany(),
     ]);
     target.accounts.splice(0, target.accounts.length, ...users.map((u) => ({
         id: u.id,
@@ -99,6 +106,7 @@ export async function hydrateFromDatabase(target) {
         performanceScore: s.performanceScore,
         returnRate: s.returnRate,
         cancellationRate: s.cancellationRate,
+        shippingSettings: s.shippingSettings || undefined,
     })));
     target.categories.splice(0, target.categories.length, ...categories.map((c) => ({
         id: c.id,
@@ -126,6 +134,7 @@ export async function hydrateFromDatabase(target) {
             priceModifier: v.priceModifier ?? undefined,
             color: v.type === 'color' ? v.label : undefined,
             colorHex: v.type === 'color' ? v.value : undefined,
+            images: v.images?.length ? v.images : undefined,
         }));
         return {
             id: p.id,
@@ -354,6 +363,19 @@ export async function hydrateFromDatabase(target) {
         period: p.period,
         paidAt: p.paidAt ? dateOnly(p.paidAt) : undefined,
     })));
+    target.settlements.splice(0, target.settlements.length, ...settlements.map((s) => ({
+        id: s.id,
+        sellerId: s.sellerId,
+        orderId: s.orderId,
+        orderDate: s.orderDate ? iso(s.orderDate) : undefined,
+        orderAmount: s.orderAmount,
+        commissionRate: s.commissionRate,
+        commissionAmount: s.commissionAmount,
+        netAmount: s.netAmount,
+        status: s.status,
+        payoutDate: s.payoutDate ? dateOnly(s.payoutDate) : undefined,
+        createdAt: iso(s.createdAt),
+    })));
     target.auditLogs.splice(0, target.auditLogs.length, ...auditLogs.map((a) => ({
         id: a.id,
         actor: a.actor,
@@ -389,11 +411,78 @@ export async function hydrateFromDatabase(target) {
         createdAt: iso(n.createdAt),
         type: n.type,
     })));
+    target.deliveryPartners.splice(0, target.deliveryPartners.length, ...deliveryPartners.map((p) => ({
+        id: p.id,
+        userId: p.userId,
+        name: p.name,
+        phone: p.phone,
+        email: p.email,
+        vehicleType: p.vehicleType,
+        kycStatus: p.kycStatus,
+        kycDocuments: p.kycDocuments || {},
+        availabilityStatus: p.availabilityStatus,
+        currentLat: p.currentLat ?? undefined,
+        currentLng: p.currentLng ?? undefined,
+        rating: p.rating,
+        totalDeliveries: p.totalDeliveries,
+        consecutiveFailures: p.consecutiveFailures,
+        joinedDate: dateOnly(p.joinedDate),
+    })));
+    target.deliveries.splice(0, target.deliveries.length, ...deliveries.map((d) => ({
+        id: d.id,
+        orderId: d.orderId,
+        deliveryPartnerId: d.deliveryPartnerId ?? undefined,
+        pickupAddress: d.pickupAddress,
+        dropAddress: d.dropAddress,
+        pickupLat: d.pickupLat ?? undefined,
+        pickupLng: d.pickupLng ?? undefined,
+        dropLat: d.dropLat ?? undefined,
+        dropLng: d.dropLng ?? undefined,
+        packageType: d.packageType,
+        paymentType: d.paymentType,
+        codAmount: d.codAmount,
+        status: d.status,
+        assignedAt: iso(d.assignedAt),
+        acceptedAt: d.acceptedAt ? iso(d.acceptedAt) : undefined,
+        pickedUpAt: d.pickedUpAt ? iso(d.pickedUpAt) : undefined,
+        outForDeliveryAt: d.outForDeliveryAt ? iso(d.outForDeliveryAt) : undefined,
+        deliveredAt: d.deliveredAt ? iso(d.deliveredAt) : undefined,
+        failureReason: d.failureReason ?? undefined,
+        failureNote: d.failureNote ?? undefined,
+        reattemptOf: d.reattemptOf ?? undefined,
+        otpCode: d.otpCode ?? undefined,
+        proofImageUrl: d.proofImageUrl ?? undefined,
+        codSubmitted: d.codSubmitted,
+        triedPartnerIds: d.triedPartnerIds || [],
+    })));
+    target.deliveryEarnings.splice(0, target.deliveryEarnings.length, ...deliveryEarnings.map((e) => ({
+        id: e.id,
+        deliveryPartnerId: e.deliveryPartnerId,
+        deliveryId: e.deliveryId,
+        baseFee: e.baseFee,
+        distanceBonus: e.distanceBonus,
+        peakBonus: e.peakBonus,
+        total: e.total,
+        payoutStatus: e.payoutStatus,
+        payoutDate: e.payoutDate ? iso(e.payoutDate) : undefined,
+        createdAt: iso(e.createdAt),
+    })));
+    target.shipments.splice(0, target.shipments.length, ...shipments.map((s) => ({
+        id: s.id,
+        orderId: s.orderId,
+        deliveryMode: s.deliveryMode,
+        providerName: s.providerName ?? undefined,
+        awbNumber: s.awbNumber ?? undefined,
+        trackingUrl: s.trackingUrl ?? undefined,
+        rateCharged: s.rateCharged ?? undefined,
+        status: s.status,
+        createdAt: iso(s.createdAt),
+    })));
     if (platformConfig) {
         Object.assign(target.platformConfig, {
-            siteName: platformConfig.siteName === 'Atmosphere' ? 'Uniqora' : platformConfig.siteName,
+            siteName: platformConfig.siteName === 'Atmosphere' ? 'Riviraa' : platformConfig.siteName,
             supportEmail: platformConfig.supportEmail === 'support@atmosphere.in'
-                ? 'support@uniqora.com'
+                ? 'support@riviraa.com'
                 : platformConfig.supportEmail,
             defaultCommission: platformConfig.defaultCommission,
             minPayoutAmount: platformConfig.minPayoutAmount,
@@ -403,8 +492,27 @@ export async function hydrateFromDatabase(target) {
             maintenanceMode: platformConfig.maintenanceMode,
             otpExpiryMinutes: platformConfig.otpExpiryMinutes,
             returnWindowDays: platformConfig.returnWindowDays,
+            deliveryMode: platformConfig.deliveryMode ?? 'own_fleet',
+            shippingPriority: platformConfig.shippingPriority ?? 'cost',
+            lowStockThreshold: platformConfig.lowStockThreshold ?? 10,
         });
     }
+    target.notificationTemplates.splice(0, target.notificationTemplates.length, ...notificationTemplates.map((t) => ({
+        id: t.id,
+        eventType: t.eventType,
+        channel: t.channel,
+        subject: t.subject ?? undefined,
+        bodyTemplate: t.bodyTemplate,
+    })));
+    target.notificationLogs.splice(0, target.notificationLogs.length, ...notificationLogs.map((l) => ({
+        id: l.id,
+        userId: l.userId,
+        eventType: l.eventType,
+        channel: l.channel,
+        status: l.status,
+        sentAt: iso(l.sentAt),
+        refId: l.refId ?? undefined,
+    })));
     if (analyticsSnapshot?.data && typeof analyticsSnapshot.data === 'object') {
         const data = analyticsSnapshot.data;
         const { finance, ...analytics } = data;

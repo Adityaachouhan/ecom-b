@@ -13,13 +13,20 @@ import type {
   AuthAccount,
   Campaign,
   CartItem,
+  Delivery,
+  DeliveryEarning,
+  DeliveryPartner,
   Escalation,
   FlaggedProduct,
   FlaggedReview,
   Notification,
+  NotificationLog,
+  NotificationTemplate,
   PaymentMethod,
   Payout,
   ReturnRequest,
+  SellerSettlement,
+  Shipment,
   TeamMember,
 } from './db.js'
 
@@ -157,6 +164,12 @@ export async function saveSeller(seller: {
   performanceScore: number
   returnRate: number
   cancellationRate: number
+  shippingSettings?: {
+    freeShippingAbove: number
+    standardFee: number
+    expressFee: number
+    processingDays: number
+  }
 }) {
   const data = {
     name: seller.name,
@@ -185,6 +198,9 @@ export async function saveSeller(seller: {
     performanceScore: seller.performanceScore,
     returnRate: seller.returnRate,
     cancellationRate: seller.cancellationRate,
+    shippingSettings: seller.shippingSettings
+      ? (seller.shippingSettings as Prisma.InputJsonValue)
+      : Prisma.JsonNull,
   }
   await prisma.seller.upsert({
     where: { id: seller.id },
@@ -224,6 +240,7 @@ type ProductLike = {
     value: string
     stock: number
     priceModifier?: number
+    images?: string[]
   }>
 }
 
@@ -276,6 +293,7 @@ export async function saveProduct(product: ProductLike) {
         value: v.value,
         stock: v.stock,
         priceModifier: v.priceModifier ?? null,
+        images: v.images ?? [],
       })),
     })
   }
@@ -819,6 +837,34 @@ export async function savePayout(payout: Payout) {
   })
 }
 
+export async function saveSellerSettlement(settlement: SellerSettlement) {
+  await prisma.sellerSettlement.upsert({
+    where: { id: settlement.id },
+    create: {
+      id: settlement.id,
+      sellerId: settlement.sellerId,
+      orderId: settlement.orderId,
+      orderDate: toDate(settlement.orderDate),
+      orderAmount: settlement.orderAmount,
+      commissionRate: settlement.commissionRate,
+      commissionAmount: settlement.commissionAmount,
+      netAmount: settlement.netAmount,
+      status: settlement.status,
+      payoutDate: toDate(settlement.payoutDate),
+      createdAt: toDateRequired(settlement.createdAt),
+    },
+    update: {
+      orderDate: toDate(settlement.orderDate),
+      orderAmount: settlement.orderAmount,
+      commissionRate: settlement.commissionRate,
+      commissionAmount: settlement.commissionAmount,
+      netAmount: settlement.netAmount,
+      status: settlement.status,
+      payoutDate: toDate(settlement.payoutDate),
+    },
+  })
+}
+
 export async function saveTeamMember(member: TeamMember) {
   await prisma.teamMember.upsert({
     where: { id: member.id },
@@ -884,6 +930,195 @@ export async function saveNotification(notif: Notification) {
   })
 }
 
+export async function saveNotificationTemplate(template: NotificationTemplate) {
+  await prisma.notificationTemplate.upsert({
+    where: { id: template.id },
+    create: {
+      id: template.id,
+      eventType: template.eventType,
+      channel: template.channel,
+      subject: template.subject ?? null,
+      bodyTemplate: template.bodyTemplate,
+    },
+    update: {
+      eventType: template.eventType,
+      channel: template.channel,
+      subject: template.subject ?? null,
+      bodyTemplate: template.bodyTemplate,
+    },
+  })
+}
+
+export async function saveNotificationLog(log: NotificationLog) {
+  await prisma.notificationLog.upsert({
+    where: { id: log.id },
+    create: {
+      id: log.id,
+      userId: log.userId,
+      eventType: log.eventType,
+      channel: log.channel,
+      status: log.status,
+      sentAt: toDateRequired(log.sentAt),
+      refId: log.refId ?? null,
+    },
+    update: {
+      status: log.status,
+      refId: log.refId ?? null,
+    },
+  })
+}
+
+export async function saveDeliveryPartner(partner: DeliveryPartner) {
+  const user = await prisma.user.findUnique({ where: { id: partner.userId } })
+  if (!user) return
+  await prisma.deliveryPartner.upsert({
+    where: { id: partner.id },
+    create: {
+      id: partner.id,
+      userId: partner.userId,
+      name: partner.name,
+      phone: partner.phone,
+      email: partner.email,
+      vehicleType: partner.vehicleType,
+      kycStatus: partner.kycStatus,
+      kycDocuments: partner.kycDocuments as object,
+      availabilityStatus: partner.availabilityStatus,
+      currentLat: partner.currentLat ?? null,
+      currentLng: partner.currentLng ?? null,
+      rating: partner.rating,
+      totalDeliveries: partner.totalDeliveries,
+      consecutiveFailures: partner.consecutiveFailures,
+      joinedDate: toDateRequired(partner.joinedDate),
+    },
+    update: {
+      name: partner.name,
+      phone: partner.phone,
+      email: partner.email,
+      vehicleType: partner.vehicleType,
+      kycStatus: partner.kycStatus,
+      kycDocuments: partner.kycDocuments as object,
+      availabilityStatus: partner.availabilityStatus,
+      currentLat: partner.currentLat ?? null,
+      currentLng: partner.currentLng ?? null,
+      rating: partner.rating,
+      totalDeliveries: partner.totalDeliveries,
+      consecutiveFailures: partner.consecutiveFailures,
+    },
+  })
+}
+
+export async function saveDelivery(delivery: Delivery) {
+  const order = await prisma.order.findUnique({ where: { id: delivery.orderId } })
+  if (!order) return
+  await prisma.delivery.upsert({
+    where: { id: delivery.id },
+    create: {
+      id: delivery.id,
+      orderId: delivery.orderId,
+      deliveryPartnerId: delivery.deliveryPartnerId ?? null,
+      pickupAddress: delivery.pickupAddress,
+      dropAddress: delivery.dropAddress,
+      pickupLat: delivery.pickupLat ?? null,
+      pickupLng: delivery.pickupLng ?? null,
+      dropLat: delivery.dropLat ?? null,
+      dropLng: delivery.dropLng ?? null,
+      packageType: delivery.packageType,
+      paymentType: delivery.paymentType,
+      codAmount: delivery.codAmount,
+      status: delivery.status,
+      assignedAt: toDateRequired(delivery.assignedAt),
+      acceptedAt: toDate(delivery.acceptedAt),
+      pickedUpAt: toDate(delivery.pickedUpAt),
+      outForDeliveryAt: toDate(delivery.outForDeliveryAt),
+      deliveredAt: toDate(delivery.deliveredAt),
+      failureReason: delivery.failureReason ?? null,
+      failureNote: delivery.failureNote ?? null,
+      reattemptOf: delivery.reattemptOf ?? null,
+      otpCode: delivery.otpCode ?? null,
+      proofImageUrl: delivery.proofImageUrl ?? null,
+      codSubmitted: delivery.codSubmitted,
+      triedPartnerIds: delivery.triedPartnerIds || [],
+    },
+    update: {
+      deliveryPartnerId: delivery.deliveryPartnerId ?? null,
+      pickupAddress: delivery.pickupAddress,
+      dropAddress: delivery.dropAddress,
+      pickupLat: delivery.pickupLat ?? null,
+      pickupLng: delivery.pickupLng ?? null,
+      dropLat: delivery.dropLat ?? null,
+      dropLng: delivery.dropLng ?? null,
+      packageType: delivery.packageType,
+      paymentType: delivery.paymentType,
+      codAmount: delivery.codAmount,
+      status: delivery.status,
+      acceptedAt: toDate(delivery.acceptedAt),
+      pickedUpAt: toDate(delivery.pickedUpAt),
+      outForDeliveryAt: toDate(delivery.outForDeliveryAt),
+      deliveredAt: toDate(delivery.deliveredAt),
+      failureReason: delivery.failureReason ?? null,
+      failureNote: delivery.failureNote ?? null,
+      reattemptOf: delivery.reattemptOf ?? null,
+      otpCode: delivery.otpCode ?? null,
+      proofImageUrl: delivery.proofImageUrl ?? null,
+      codSubmitted: delivery.codSubmitted,
+      triedPartnerIds: delivery.triedPartnerIds || [],
+    },
+  })
+}
+
+export async function saveDeliveryEarning(earning: DeliveryEarning) {
+  await prisma.deliveryEarning.upsert({
+    where: { id: earning.id },
+    create: {
+      id: earning.id,
+      deliveryPartnerId: earning.deliveryPartnerId,
+      deliveryId: earning.deliveryId,
+      baseFee: earning.baseFee,
+      distanceBonus: earning.distanceBonus,
+      peakBonus: earning.peakBonus,
+      total: earning.total,
+      payoutStatus: earning.payoutStatus,
+      payoutDate: toDate(earning.payoutDate),
+      createdAt: toDateRequired(earning.createdAt),
+    },
+    update: {
+      baseFee: earning.baseFee,
+      distanceBonus: earning.distanceBonus,
+      peakBonus: earning.peakBonus,
+      total: earning.total,
+      payoutStatus: earning.payoutStatus,
+      payoutDate: toDate(earning.payoutDate),
+    },
+  })
+}
+
+export async function saveShipment(shipment: Shipment) {
+  const order = await prisma.order.findUnique({ where: { id: shipment.orderId } })
+  if (!order) return
+  await prisma.shipment.upsert({
+    where: { id: shipment.id },
+    create: {
+      id: shipment.id,
+      orderId: shipment.orderId,
+      deliveryMode: shipment.deliveryMode,
+      providerName: shipment.providerName ?? null,
+      awbNumber: shipment.awbNumber ?? null,
+      trackingUrl: shipment.trackingUrl ?? null,
+      rateCharged: shipment.rateCharged ?? null,
+      status: shipment.status,
+      createdAt: toDateRequired(shipment.createdAt),
+    },
+    update: {
+      deliveryMode: shipment.deliveryMode,
+      providerName: shipment.providerName ?? null,
+      awbNumber: shipment.awbNumber ?? null,
+      trackingUrl: shipment.trackingUrl ?? null,
+      rateCharged: shipment.rateCharged ?? null,
+      status: shipment.status,
+    },
+  })
+}
+
 export async function markNotificationsRead(userId: string, ids?: string[]) {
   if (ids?.length) {
     await prisma.notification.updateMany({
@@ -900,8 +1135,8 @@ export async function savePlatformConfig(config: Record<string, unknown>) {
     where: { id: 1 },
     create: {
       id: 1,
-      siteName: String(config.siteName ?? 'Uniqora'),
-      supportEmail: String(config.supportEmail ?? 'support@uniqora.com'),
+      siteName: String(config.siteName ?? 'Riviraa'),
+      supportEmail: String(config.supportEmail ?? 'support@riviraa.com'),
       defaultCommission: Number(config.defaultCommission ?? 12),
       minPayoutAmount: Number(config.minPayoutAmount ?? 1000),
       freeShippingThreshold: Number(config.freeShippingThreshold ?? 499),
@@ -910,10 +1145,13 @@ export async function savePlatformConfig(config: Record<string, unknown>) {
       maintenanceMode: Boolean(config.maintenanceMode ?? false),
       otpExpiryMinutes: Number(config.otpExpiryMinutes ?? 10),
       returnWindowDays: Number(config.returnWindowDays ?? 7),
+      deliveryMode: String(config.deliveryMode ?? 'own_fleet'),
+      shippingPriority: String(config.shippingPriority ?? 'cost'),
+      lowStockThreshold: Number(config.lowStockThreshold ?? 10),
     },
     update: {
-      siteName: String(config.siteName ?? 'Uniqora'),
-      supportEmail: String(config.supportEmail ?? 'support@uniqora.com'),
+      siteName: String(config.siteName ?? 'Riviraa'),
+      supportEmail: String(config.supportEmail ?? 'support@riviraa.com'),
       defaultCommission: Number(config.defaultCommission ?? 12),
       minPayoutAmount: Number(config.minPayoutAmount ?? 1000),
       freeShippingThreshold: Number(config.freeShippingThreshold ?? 499),
@@ -922,6 +1160,9 @@ export async function savePlatformConfig(config: Record<string, unknown>) {
       maintenanceMode: Boolean(config.maintenanceMode ?? false),
       otpExpiryMinutes: Number(config.otpExpiryMinutes ?? 10),
       returnWindowDays: Number(config.returnWindowDays ?? 7),
+      deliveryMode: String(config.deliveryMode ?? 'own_fleet'),
+      shippingPriority: String(config.shippingPriority ?? 'cost'),
+      lowStockThreshold: Number(config.lowStockThreshold ?? 10),
     },
   })
 }

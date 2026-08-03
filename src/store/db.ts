@@ -146,6 +146,20 @@ export interface Payout {
   paidAt?: string
 }
 
+export interface SellerSettlement {
+  id: string
+  sellerId: string
+  orderId: string
+  orderDate?: string
+  orderAmount: number
+  commissionRate: number
+  commissionAmount: number
+  netAmount: number
+  status: 'pending' | 'processing' | 'paid'
+  payoutDate?: string
+  createdAt: string
+}
+
 export interface AuditLog {
   id: string
   actor: string
@@ -185,6 +199,26 @@ export interface Notification {
   type: string
 }
 
+export type NotificationChannel = 'email' | 'sms' | 'push'
+
+export interface NotificationTemplate {
+  id: string
+  eventType: string
+  channel: NotificationChannel
+  subject?: string
+  bodyTemplate: string
+}
+
+export interface NotificationLog {
+  id: string
+  userId: string
+  eventType: string
+  channel: NotificationChannel
+  status: 'sent' | 'failed'
+  sentAt: string
+  refId?: string
+}
+
 export interface PaymentMethod {
   id: string
   userId: string
@@ -192,6 +226,107 @@ export interface PaymentMethod {
   label: string
   last4?: string
   isDefault: boolean
+}
+
+export type DeliveryStatus =
+  | 'assigned'
+  | 'accepted'
+  | 'picked_up'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'failed'
+
+export interface KycDocumentEntry {
+  url?: string
+  status?: 'uploaded' | 'verified' | 'rejected' | 'pending'
+}
+
+export interface DeliveryPartner {
+  id: string
+  userId: string
+  name: string
+  phone: string
+  email: string
+  vehicleType: 'bike' | 'scooter' | 'van'
+  kycStatus: 'pending' | 'approved' | 'rejected'
+  kycDocuments: {
+    aadhaar?: KycDocumentEntry
+    pan?: KycDocumentEntry
+    dl?: KycDocumentEntry
+    rc?: KycDocumentEntry
+  }
+  availabilityStatus: 'online' | 'offline'
+  currentLat?: number
+  currentLng?: number
+  rating: number
+  totalDeliveries: number
+  consecutiveFailures: number
+  joinedDate: string
+}
+
+export interface Delivery {
+  id: string
+  orderId: string
+  deliveryPartnerId?: string
+  pickupAddress: string
+  dropAddress: string
+  pickupLat?: number
+  pickupLng?: number
+  dropLat?: number
+  dropLng?: number
+  packageType: 'small' | 'medium' | 'large' | 'fragile'
+  paymentType: 'cod' | 'prepaid'
+  codAmount: number
+  status: DeliveryStatus
+  assignedAt: string
+  acceptedAt?: string
+  pickedUpAt?: string
+  outForDeliveryAt?: string
+  deliveredAt?: string
+  failureReason?: string
+  failureNote?: string
+  reattemptOf?: string
+  otpCode?: string
+  proofImageUrl?: string
+  codSubmitted: boolean
+  triedPartnerIds: string[]
+}
+
+export interface DeliveryEarning {
+  id: string
+  deliveryPartnerId: string
+  deliveryId: string
+  baseFee: number
+  distanceBonus: number
+  peakBonus: number
+  total: number
+  payoutStatus: 'pending' | 'processed' | 'paid'
+  payoutDate?: string
+  createdAt: string
+}
+
+export type DeliveryMode = 'own_fleet' | 'third_party' | 'mixed'
+export type ShippingPriority = 'cost' | 'speed'
+export type ShipmentStatus =
+  | 'created'
+  | 'assigned'
+  | 'picked_up'
+  | 'in_transit'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'cancelled'
+  | 'failed'
+
+export interface Shipment {
+  id: string
+  orderId: string
+  deliveryMode: 'own_fleet' | 'third_party'
+  providerName?: string
+  awbNumber?: string
+  trackingUrl?: string
+  rateCharged?: number
+  status: ShipmentStatus
+  createdAt: string
 }
 
 function deepClone<T>(v: T): T {
@@ -252,6 +387,16 @@ function buildAccounts(): AuthAccount[] {
       avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Root',
       phone: '+91 80000 00001',
       joinedAt: '2019-01-01',
+    },
+    {
+      id: 'dlv_001',
+      email: 'arjun.rider@riviraa.com',
+      password: DEFAULT_PASSWORD,
+      name: 'Arjun Rider',
+      role: 'delivery',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Arjun',
+      phone: '+91 98765 11111',
+      joinedAt: '2024-01-15',
     },
   ]
 }
@@ -393,6 +538,28 @@ export const db = {
       status: 'active',
       displayOrder: 0,
     },
+    {
+      id: 'ad_products_top_1',
+      image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1400&q=90',
+      title: 'Member deals, refreshed weekly',
+      link: '/products?deals=true',
+      placement: 'PRODUCTS_TOP_BANNER',
+      startDate: '2024-06-01',
+      endDate: '2027-12-31',
+      status: 'active',
+      displayOrder: 0,
+    },
+    {
+      id: 'ad_products_inline_1',
+      image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1200&q=90',
+      title: 'New season essentials',
+      link: '/products?new=true',
+      placement: 'PRODUCTS_INLINE_BANNER',
+      startDate: '2024-06-01',
+      endDate: '2027-12-31',
+      status: 'active',
+      displayOrder: 0,
+    },
   ] as Ad[],
   returns: [
     { id: 'ret_001', orderId: 'ORD-2024-001', productName: 'Apple iPhone 15 Pro Max', reason: 'Defective screen', status: 'pending', sellerId: 'sel_001', customerName: 'Priya Sharma', amount: 134900, createdAt: '2024-06-10' },
@@ -404,6 +571,45 @@ export const db = {
     { id: 'pay_002', sellerId: 'sel_001', amount: 128000, status: 'paid', period: '2024-05', paidAt: '2024-06-05' },
     { id: 'pay_003', sellerId: 'sel_001', amount: 112000, status: 'paid', period: '2024-04', paidAt: '2024-05-05' },
   ] as Payout[],
+  settlements: [
+    {
+      id: 'stl_001',
+      sellerId: 'sel_001',
+      orderId: 'ORD-2024-001',
+      orderDate: '2024-05-10T10:30:00Z',
+      orderAmount: 134900,
+      commissionRate: 8,
+      commissionAmount: 10792,
+      netAmount: 124108,
+      status: 'pending',
+      createdAt: '2024-05-12T15:45:00Z',
+    },
+    {
+      id: 'stl_002',
+      sellerId: 'sel_003',
+      orderId: 'ORD-DEMO-PAID-1',
+      orderDate: '2024-04-01T10:00:00Z',
+      orderAmount: 45000,
+      commissionRate: 6,
+      commissionAmount: 2700,
+      netAmount: 42300,
+      status: 'paid',
+      payoutDate: '2024-04-20',
+      createdAt: '2024-04-05T12:00:00Z',
+    },
+    {
+      id: 'stl_003',
+      sellerId: 'sel_001',
+      orderId: 'ORD-DEMO-PROC-1',
+      orderDate: '2024-05-01T09:00:00Z',
+      orderAmount: 24990,
+      commissionRate: 8,
+      commissionAmount: 1999.2,
+      netAmount: 22990.8,
+      status: 'processing',
+      createdAt: '2024-05-08T10:00:00Z',
+    },
+  ] as SellerSettlement[],
   auditLogs: [
     { id: 'aud_001', actor: 'root@marketplace.com', action: 'UPDATE_CONFIG', resource: 'platform', details: 'Updated commission default to 12%', timestamp: '2024-06-29T10:00:00Z', ip: '10.0.0.1' },
     { id: 'aud_002', actor: 'vikram.singh@marketplace.com', action: 'SUSPEND_SELLER', resource: 'sel_008', details: 'Suspended for policy violation', timestamp: '2024-06-28T14:22:00Z' },
@@ -416,8 +622,8 @@ export const db = {
     { id: 'team_003', name: 'Anita Verma', email: 'anita.verma@marketplace.com', role: 'manager', status: 'active', permissions: ['sellers', 'escalations', 'approvals', 'inventory'], joinedAt: '2021-08-01' },
   ] as TeamMember[],
   platformConfig: {
-    siteName: 'Uniqora',
-    supportEmail: 'support@uniqora.com',
+    siteName: 'Riviraa',
+    supportEmail: 'support@riviraa.com',
     defaultCommission: 12,
     minPayoutAmount: 1000,
     freeShippingThreshold: 499,
@@ -426,6 +632,9 @@ export const db = {
     maintenanceMode: false,
     otpExpiryMinutes: 10,
     returnWindowDays: 7,
+    deliveryMode: 'own_fleet' as DeliveryMode,
+    shippingPriority: 'cost' as ShippingPriority,
+    lowStockThreshold: 10,
   },
   alerts: [
     { id: 'alert_001', title: 'High return rate spike', severity: 'warning', status: 'open', createdAt: '2024-06-29', message: 'Fashion category returns up 18% WoW' },
@@ -437,6 +646,36 @@ export const db = {
     { id: 'notif_002', userId: 'sel_001', title: 'New order', body: 'You received a new order', read: false, createdAt: nowISO(), type: 'order' },
     { id: 'notif_003', userId: 'adm_001', title: 'Moderation queue', body: '6 items pending review', read: true, createdAt: todayISO(), type: 'moderation' },
   ] as Notification[],
+  notificationTemplates: [] as NotificationTemplate[],
+  notificationLogs: [] as NotificationLog[],
+  newsletterSubscribers: [] as { email: string; subscribedAt: string }[],
+  deliveryPartners: [
+    {
+      id: 'dp_001',
+      userId: 'dlv_001',
+      name: 'Arjun Rider',
+      phone: '+91 98765 11111',
+      email: 'arjun.rider@riviraa.com',
+      vehicleType: 'bike',
+      kycStatus: 'approved',
+      kycDocuments: {
+        aadhaar: { url: 'https://example.com/aadhaar.pdf', status: 'verified' },
+        pan: { url: 'https://example.com/pan.pdf', status: 'verified' },
+        dl: { url: 'https://example.com/dl.pdf', status: 'verified' },
+        rc: { url: 'https://example.com/rc.pdf', status: 'verified' },
+      },
+      availabilityStatus: 'online',
+      currentLat: 12.9716,
+      currentLng: 77.5946,
+      rating: 4.8,
+      totalDeliveries: 142,
+      consecutiveFailures: 0,
+      joinedDate: '2024-01-15',
+    },
+  ] as DeliveryPartner[],
+  deliveries: [] as Delivery[],
+  deliveryEarnings: [] as DeliveryEarning[],
+  shipments: [] as Shipment[],
   analytics: {
     monthlyRevenue: analyticsSeed.monthlyRevenue,
     weeklyOrders: analyticsSeed.weeklyOrders,

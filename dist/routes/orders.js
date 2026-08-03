@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { db, sellerMatches, logAudit } from '../store/db.js';
-import { clearCart, saveCustomer, saveNotification, saveOrder, saveReturn, } from '../store/persist.js';
+import { clearCart, saveCustomer, saveOrder, saveReturn, } from '../store/persist.js';
 import { authenticate, requireRoles, adminRoles, staffRoles } from '../middleware/auth.js';
 import { fail, generateId, nowISO, paginate, success, todayISO } from '../utils/helpers.js';
+import { sendNotification } from '../lib/notifications.js';
 const router = Router();
 const idempotencyKeys = new Map();
 router.use(authenticate);
@@ -108,19 +109,19 @@ router.post('/', async (req, res, next) => {
                 await saveCustomer(customer);
             }
         }
-        const notif = {
-            id: generateId('notif'),
-            userId: req.user.id,
-            title: isCod ? 'Order placed' : 'Order awaiting payment',
-            body: isCod
-                ? `Your order ${id} has been confirmed`
-                : `Complete payment for order ${id} to confirm`,
-            read: false,
-            createdAt: nowISO(),
-            type: 'order',
-        };
-        db.notifications.unshift(notif);
-        await saveNotification(notif);
+        await sendNotification('order_placed', req.user.id, {
+            orderId: id,
+            total,
+            refId: `${id}:placed`,
+        });
+        if (isCod) {
+            await sendNotification('order_confirmed', req.user.id, {
+                orderId: id,
+                refId: `${id}:confirmed`,
+            });
+            const { fulfillOrder } = await import('../lib/shipping/index.js');
+            await fulfillOrder(order);
+        }
         res.status(201).json(success(order, isCod ? 'Order placed' : 'Order created — payment pending'));
     }
     catch (e) {
@@ -180,8 +181,27 @@ router.get('/:id/tracking', (req, res, next) => {
             trackingId: order.trackingId,
             status: order.status,
             estimatedDelivery: order.estimatedDelivery,
-            carrier: order.carrier || 'Delhivery',
+            carrier: order.carrier || 'Riviraa Fleet',
             events: order.trackingEvents,
+            deliveryOtp: (() => {
+                const d = db.deliveries.find((x) => x.orderId === order.id &&
+                    x.status === 'out_for_delivery' &&
+                    Boolean(x.otpCode));
+                return d?.otpCode || null;
+            })(),
+            shipment: (() => {
+                const s = db.shipments.find((x) => x.orderId === order.id);
+                if (!s)
+                    return null;
+                return {
+                    deliveryMode: s.deliveryMode,
+                    providerName: s.providerName || null,
+                    awbNumber: s.awbNumber || null,
+                    trackingUrl: s.trackingUrl || null,
+                    status: s.status,
+                    rateCharged: s.rateCharged ?? null,
+                };
+            })(),
         }));
     }
     catch (e) {
@@ -246,6 +266,22 @@ router.post('/:id/return', async (req, res, next) => {
         db.returns.unshift(ret);
         await saveOrder(order);
         await saveReturn(ret);
+        await sendNotification('order_failed_returned', req.user.id, {
+            orderId: order.id,
+            message: 'return requested',
+            refId: `${order.id}:return`,
+        });
+        const sellerIds = [...new Set(order.items.map((i) => i.sellerId))];
+        for (const sellerId of sellerIds) {
+            const sellerAccount = db.accounts.find((a) => a.sellerId === sellerId || a.id === sellerId);
+            if (sellerAccount) {
+                await sendNotification('order_failed_returned', sellerAccount.id, {
+                    orderId: order.id,
+                    message: 'customer requested a return',
+                    refId: `${order.id}:return:seller:${sellerAccount.id}`,
+                });
+            }
+        }
         res.json(success({ order, returnRequest: ret }, 'Return requested'));
     }
     catch (e) {
@@ -266,6 +302,20 @@ router.patch('/:id/status', requireRoles('seller', ...staffRoles, ...adminRoles)
         if (status === 'delivered')
             order.deliveredAt = nowISO();
         await saveOrder(order);
+        if (status === 'delivered') {
+            const { ensureSettlementsForOrder } = await import('../lib/settlements.js');
+            await ensureSettlementsForOrder(order);
+        }
+        if (['confirmed', 'processing', 'shipped'].includes(status)) {
+            const { fulfillOrder } = await import('../lib/shipping/index.js');
+            await fulfillOrder(order);
+        }
+        if (status === 'confirmed') {
+            await sendNotification('order_confirmed', order.customerId, {
+                orderId: order.id,
+                refId: `${order.id}:confirmed`,
+            });
+        }
         logAudit(req.user.email, 'UPDATE_ORDER_STATUS', order.id, `Status → ${status}`);
         res.json(success(order, 'Order status updated'));
     }

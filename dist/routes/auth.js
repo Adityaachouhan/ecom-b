@@ -36,10 +36,10 @@ router.post('/register', async (req, res, next) => {
         if (db.accounts.find((a) => a.email.toLowerCase() === String(email).toLowerCase())) {
             throw fail('Email already registered', 409);
         }
-        const allowed = ['customer', 'seller'];
+        const allowed = ['customer', 'seller', 'delivery'];
         if (!allowed.includes(role))
             throw fail('Invalid role for registration');
-        const id = role === 'seller' ? generateId('sel') : generateId('usr');
+        const id = role === 'seller' ? generateId('sel') : role === 'delivery' ? generateId('dlv') : generateId('usr');
         const account = {
             id,
             email: String(email).toLowerCase(),
@@ -75,6 +75,28 @@ router.post('/register', async (req, res, next) => {
             };
             db.customers.push(customer);
             await saveCustomer(customer);
+        }
+        if (role === 'delivery') {
+            const { saveDeliveryPartner } = await import('../store/persist.js');
+            const partner = {
+                id: generateId('dp'),
+                userId: id,
+                name: account.name,
+                phone: phone || '',
+                email: account.email,
+                vehicleType: 'bike',
+                kycStatus: 'pending',
+                kycDocuments: {},
+                availabilityStatus: 'offline',
+                currentLat: 12.9716,
+                currentLng: 77.5946,
+                rating: 5,
+                totalDeliveries: 0,
+                consecutiveFailures: 0,
+                joinedDate: todayISO(),
+            };
+            db.deliveryPartners.push(partner);
+            await saveDeliveryPartner(partner);
         }
         res.status(201).json(success({ user: publicAccount(account), otp: account.otp, requiresOtp: true }, 'Registered. Verify OTP to continue.'));
     }

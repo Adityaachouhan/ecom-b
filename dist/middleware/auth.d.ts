@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-export type Role = 'customer' | 'seller' | 'manager' | 'admin' | 'superadmin';
+export type Role = 'customer' | 'seller' | 'manager' | 'admin' | 'superadmin' | 'delivery';
 export interface AuthUser {
     id: string;
     email: string;

@@ -8,6 +8,8 @@ import {
 } from '../store/persist.js'
 import { authenticate, optionalAuth, requireRoles, adminRoles } from '../middleware/auth.js'
 import { fail, generateId, paginate, success, todayISO } from '../utils/helpers.js'
+import { fuzzySearch } from '../utils/fuzzySearch.js'
+import { getRelatedProducts } from '../utils/recommendations.js'
 
 const router = Router()
 
@@ -30,15 +32,9 @@ router.get('/', optionalAuth, (req, res) => {
     limit,
   } = req.query
 
-  const query = String(search || q || '').toLowerCase()
+  const query = String(search || q || '')
   if (query) {
-    list = list.filter(
-      (p) =>
-        p.title.toLowerCase().includes(query) ||
-        p.brand.toLowerCase().includes(query) ||
-        p.tags.some((t) => t.includes(query)) ||
-        p.category.toLowerCase().includes(query)
-    )
+    list = fuzzySearch(list, query, (p) => [p.title, p.brand, p.category, ...p.tags])
   }
   if (category) list = list.filter((p) => p.category.toLowerCase() === String(category).toLowerCase())
   if (subcategory) list = list.filter((p) => p.subcategory.toLowerCase() === String(subcategory).toLowerCase())
@@ -80,15 +76,10 @@ router.get('/trending', (_req, res) => {
   res.json(success(db.products.filter((p) => p.isTrending)))
 })
 
-/** GET /api/products/search */
+/** GET /api/products/search — typo-tolerant (see utils/fuzzySearch.ts) */
 router.get('/search', (req, res) => {
-  const q = String(req.query.q || '').toLowerCase()
-  const list = db.products.filter(
-    (p) =>
-      p.title.toLowerCase().includes(q) ||
-      p.brand.toLowerCase().includes(q) ||
-      p.tags.some((t) => t.includes(q))
-  )
+  const q = String(req.query.q || '')
+  const list = fuzzySearch(db.products, q, (p) => [p.title, p.brand, p.category, ...p.tags])
   res.json(success(paginate(list, Number(req.query.page), Number(req.query.limit))))
 })
 
@@ -98,6 +89,23 @@ router.get('/:id', (req, res, next) => {
     const product = db.products.find((p) => p.id === req.params.id)
     if (!product) throw fail('Product not found', 404)
     res.json(success(product))
+  } catch (e) {
+    next(e)
+  }
+})
+
+/**
+ * GET /api/products/:id/related — "customers who bought this also bought",
+ * ranked by real order co-occurrence and topped up with same-category
+ * products when order history is sparse (see utils/recommendations.ts).
+ */
+router.get('/:id/related', (req, res, next) => {
+  try {
+    const product = db.products.find((p) => p.id === req.params.id)
+    if (!product) throw fail('Product not found', 404)
+    const limit = Math.min(12, Number(req.query.limit) || 4)
+    const related = getRelatedProducts(db.products, db.orders, product, limit)
+    res.json(success(related))
   } catch (e) {
     next(e)
   }
@@ -237,6 +245,28 @@ router.patch('/:id', authenticate, requireRoles(...adminRoles, 'seller'), async 
     }
     db.products[idx] = updated
     await saveProduct(updated)
+
+    if (req.body.stock !== undefined) {
+      const threshold = Number(db.platformConfig.lowStockThreshold ?? 10)
+      if (updated.stock <= threshold) {
+        const { sendNotification, hasNotificationLog } = await import('../lib/notifications.js')
+        const refId = `lowstock:${updated.id}:${updated.stock}`
+        if (!hasNotificationLog('low_stock', refId)) {
+          const sellerAccount = db.accounts.find(
+            (a) => a.sellerId === updated.sellerId || a.id === updated.sellerId
+          )
+          if (sellerAccount) {
+            await sendNotification('low_stock', sellerAccount.id, {
+              productId: updated.id,
+              productName: updated.title || updated.name,
+              stock: updated.stock,
+              refId,
+            })
+          }
+        }
+      }
+    }
+
     res.json(success(updated, 'Product updated'))
   } catch (e) {
     next(e)

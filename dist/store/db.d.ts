@@ -116,6 +116,19 @@ export interface Payout {
     period: string;
     paidAt?: string;
 }
+export interface SellerSettlement {
+    id: string;
+    sellerId: string;
+    orderId: string;
+    orderDate?: string;
+    orderAmount: number;
+    commissionRate: number;
+    commissionAmount: number;
+    netAmount: number;
+    status: 'pending' | 'processing' | 'paid';
+    payoutDate?: string;
+    createdAt: string;
+}
 export interface AuditLog {
     id: string;
     actor: string;
@@ -151,6 +164,23 @@ export interface Notification {
     createdAt: string;
     type: string;
 }
+export type NotificationChannel = 'email' | 'sms' | 'push';
+export interface NotificationTemplate {
+    id: string;
+    eventType: string;
+    channel: NotificationChannel;
+    subject?: string;
+    bodyTemplate: string;
+}
+export interface NotificationLog {
+    id: string;
+    userId: string;
+    eventType: string;
+    channel: NotificationChannel;
+    status: 'sent' | 'failed';
+    sentAt: string;
+    refId?: string;
+}
 export interface PaymentMethod {
     id: string;
     userId: string;
@@ -158,6 +188,86 @@ export interface PaymentMethod {
     label: string;
     last4?: string;
     isDefault: boolean;
+}
+export type DeliveryStatus = 'assigned' | 'accepted' | 'picked_up' | 'out_for_delivery' | 'delivered' | 'failed';
+export interface KycDocumentEntry {
+    url?: string;
+    status?: 'uploaded' | 'verified' | 'rejected' | 'pending';
+}
+export interface DeliveryPartner {
+    id: string;
+    userId: string;
+    name: string;
+    phone: string;
+    email: string;
+    vehicleType: 'bike' | 'scooter' | 'van';
+    kycStatus: 'pending' | 'approved' | 'rejected';
+    kycDocuments: {
+        aadhaar?: KycDocumentEntry;
+        pan?: KycDocumentEntry;
+        dl?: KycDocumentEntry;
+        rc?: KycDocumentEntry;
+    };
+    availabilityStatus: 'online' | 'offline';
+    currentLat?: number;
+    currentLng?: number;
+    rating: number;
+    totalDeliveries: number;
+    consecutiveFailures: number;
+    joinedDate: string;
+}
+export interface Delivery {
+    id: string;
+    orderId: string;
+    deliveryPartnerId?: string;
+    pickupAddress: string;
+    dropAddress: string;
+    pickupLat?: number;
+    pickupLng?: number;
+    dropLat?: number;
+    dropLng?: number;
+    packageType: 'small' | 'medium' | 'large' | 'fragile';
+    paymentType: 'cod' | 'prepaid';
+    codAmount: number;
+    status: DeliveryStatus;
+    assignedAt: string;
+    acceptedAt?: string;
+    pickedUpAt?: string;
+    outForDeliveryAt?: string;
+    deliveredAt?: string;
+    failureReason?: string;
+    failureNote?: string;
+    reattemptOf?: string;
+    otpCode?: string;
+    proofImageUrl?: string;
+    codSubmitted: boolean;
+    triedPartnerIds: string[];
+}
+export interface DeliveryEarning {
+    id: string;
+    deliveryPartnerId: string;
+    deliveryId: string;
+    baseFee: number;
+    distanceBonus: number;
+    peakBonus: number;
+    total: number;
+    payoutStatus: 'pending' | 'processed' | 'paid';
+    payoutDate?: string;
+    createdAt: string;
+}
+export type DeliveryMode = 'own_fleet' | 'third_party' | 'mixed';
+export type ShippingPriority = 'cost' | 'speed';
+export type ShipmentStatus = 'created' | 'assigned' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
+export interface Shipment {
+    id: string;
+    orderId: string;
+    deliveryMode: 'own_fleet' | 'third_party';
+    providerName?: string;
+    awbNumber?: string;
+    trackingUrl?: string;
+    rateCharged?: number;
+    status: ShipmentStatus;
+    createdAt: string;
 }
 export declare const db: {
     products: import("../data/products.js").Product[];
@@ -195,6 +305,7 @@ export declare const db: {
     ads: Ad[];
     returns: ReturnRequest[];
     payouts: Payout[];
+    settlements: SellerSettlement[];
     auditLogs: AuditLog[];
     team: TeamMember[];
     platformConfig: {
@@ -208,9 +319,22 @@ export declare const db: {
         maintenanceMode: boolean;
         otpExpiryMinutes: number;
         returnWindowDays: number;
+        deliveryMode: DeliveryMode;
+        shippingPriority: ShippingPriority;
+        lowStockThreshold: number;
     };
     alerts: Alert[];
     notifications: Notification[];
+    notificationTemplates: NotificationTemplate[];
+    notificationLogs: NotificationLog[];
+    newsletterSubscribers: {
+        email: string;
+        subscribedAt: string;
+    }[];
+    deliveryPartners: DeliveryPartner[];
+    deliveries: Delivery[];
+    deliveryEarnings: DeliveryEarning[];
+    shipments: Shipment[];
     analytics: {
         monthlyRevenue: analyticsSeed.DataPoint[];
         weeklyOrders: analyticsSeed.DataPoint[];

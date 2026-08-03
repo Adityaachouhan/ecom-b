@@ -95,4 +95,49 @@ router.get('/reports', (_req, res) => {
         generatedAt: todayISO(),
     }));
 });
+/** GET /api/manager/delivery-partners */
+router.get('/delivery-partners', (req, res) => {
+    let list = [...db.deliveryPartners];
+    if (req.query.kycStatus)
+        list = list.filter((p) => p.kycStatus === req.query.kycStatus);
+    if (req.query.flagged === 'true')
+        list = list.filter((p) => p.consecutiveFailures >= 3);
+    res.json(success(paginate(list, Number(req.query.page), Number(req.query.limit))));
+});
+/** PATCH /api/manager/delivery-partners/:id */
+router.patch('/delivery-partners/:id', async (req, res, next) => {
+    try {
+        const { saveDeliveryPartner } = await import('../store/persist.js');
+        const partner = db.deliveryPartners.find((p) => p.id === req.params.id);
+        if (!partner)
+            throw fail('Delivery partner not found', 404);
+        const action = req.body.action;
+        if (action === 'approve') {
+            partner.kycStatus = 'approved';
+            const { sendNotification } = await import('../lib/notifications.js');
+            await sendNotification('kyc_approved', partner.userId, {
+                refId: `${partner.id}:kyc_approved`,
+            });
+        }
+        else if (action === 'reject') {
+            partner.kycStatus = 'rejected';
+            const reason = req.body.reason ? String(req.body.reason) : 'Documents need revision';
+            const { sendNotification } = await import('../lib/notifications.js');
+            await sendNotification('kyc_rejected', partner.userId, {
+                reason,
+                refId: `${partner.id}:kyc_rejected`,
+            });
+            partner.availabilityStatus = 'offline';
+        }
+        else {
+            Object.assign(partner, req.body);
+        }
+        await saveDeliveryPartner(partner);
+        logAudit(req.user.email, 'UPDATE_DELIVERY_PARTNER', partner.id, action || 'patch');
+        res.json(success(partner, 'Delivery partner updated'));
+    }
+    catch (e) {
+        next(e);
+    }
+});
 export default router;

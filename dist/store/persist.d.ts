@@ -1,4 +1,4 @@
-import type { Address, Ad, Alert, Approval, AuthAccount, Campaign, CartItem, Escalation, FlaggedProduct, FlaggedReview, Notification, PaymentMethod, Payout, ReturnRequest, TeamMember } from './db.js';
+import type { Address, Ad, Alert, Approval, AuthAccount, Campaign, CartItem, Delivery, DeliveryEarning, DeliveryPartner, Escalation, FlaggedProduct, FlaggedReview, Notification, NotificationLog, NotificationTemplate, PaymentMethod, Payout, ReturnRequest, SellerSettlement, Shipment, TeamMember } from './db.js';
 /** Fire-and-forget with logging — use when response shouldn't block on DB. */
 export declare function persistLater(label: string, fn: () => Promise<unknown>): void;
 export declare function saveUser(account: AuthAccount): Promise<void>;
@@ -49,6 +49,12 @@ export declare function saveSeller(seller: {
     performanceScore: number;
     returnRate: number;
     cancellationRate: number;
+    shippingSettings?: {
+        freeShippingAbove: number;
+        standardFee: number;
+        expressFee: number;
+        processingDays: number;
+    };
 }): Promise<void>;
 type ProductLike = {
     id: string;
@@ -81,6 +87,7 @@ type ProductLike = {
         value: string;
         stock: number;
         priceModifier?: number;
+        images?: string[];
     }>;
 };
 export declare function saveProduct(product: ProductLike): Promise<void>;
@@ -180,9 +187,16 @@ export declare function saveAd(ad: Ad): Promise<void>;
 export declare function deleteAd(id: string): Promise<void>;
 export declare function saveReturn(ret: ReturnRequest): Promise<void>;
 export declare function savePayout(payout: Payout): Promise<void>;
+export declare function saveSellerSettlement(settlement: SellerSettlement): Promise<void>;
 export declare function saveTeamMember(member: TeamMember): Promise<void>;
 export declare function saveAlert(alert: Alert): Promise<void>;
 export declare function saveNotification(notif: Notification): Promise<void>;
+export declare function saveNotificationTemplate(template: NotificationTemplate): Promise<void>;
+export declare function saveNotificationLog(log: NotificationLog): Promise<void>;
+export declare function saveDeliveryPartner(partner: DeliveryPartner): Promise<void>;
+export declare function saveDelivery(delivery: Delivery): Promise<void>;
+export declare function saveDeliveryEarning(earning: DeliveryEarning): Promise<void>;
+export declare function saveShipment(shipment: Shipment): Promise<void>;
 export declare function markNotificationsRead(userId: string, ids?: string[]): Promise<void>;
 export declare function savePlatformConfig(config: Record<string, unknown>): Promise<void>;
 export declare function saveAnalyticsSnapshot(analytics: Record<string, unknown>, finance: Record<string, unknown>): Promise<void>;

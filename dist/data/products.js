@@ -226,7 +226,7 @@ const rawProducts = [
         id: 'p007',
         title: 'Instant Pot Duo 7-in-1 Electric Pressure Cooker 6 Qt',
         description: 'The Instant Pot Duo combines 7 kitchen appliances: Pressure Cooker, Slow Cooker, Rice Cooker, Steamer, Sauté, Yogurt Maker & Warmer.',
-        category: 'Home & Kitchen',
+        category: 'Home & Living',
         subcategory: 'Kitchen Appliances',
         brand: 'Instant Pot',
         images: [
@@ -316,7 +316,7 @@ const rawProducts = [
         id: 'p010',
         title: 'IKEA MALM High Bed Frame with 4 Storage Boxes',
         description: 'MALM bed frame with 4 large drawers for storage. Clean Scandinavian design that fits any bedroom style.',
-        category: 'Home & Kitchen',
+        category: 'Home & Living',
         subcategory: 'Furniture',
         brand: 'IKEA',
         images: [
@@ -379,7 +379,7 @@ const rawProducts = [
         id: 'p012',
         title: 'Dyson V15 Detect Absolute Cordless Vacuum Cleaner',
         description: 'The Dyson V15 Detect automatically adapts suction to the floor type, with laser dust detection and HEPA filtration.',
-        category: 'Home & Kitchen',
+        category: 'Home & Living',
         subcategory: 'Cleaning',
         brand: 'Dyson',
         images: [
@@ -559,7 +559,7 @@ const rawProducts = [
         id: 'p018',
         title: 'Prestige Iris 750W Mixer Grinder 3 Jars',
         description: 'Prestige Iris 750W mixer grinder with 3 stainless steel jars, 3-speed control with incher, and anti-rust body.',
-        category: 'Home & Kitchen',
+        category: 'Home & Living',
         subcategory: 'Kitchen Appliances',
         brand: 'Prestige',
         images: [

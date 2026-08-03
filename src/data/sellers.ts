@@ -28,6 +28,12 @@ export interface Seller {
   performanceScore: number
   returnRate: number
   cancellationRate: number
+  shippingSettings?: {
+    freeShippingAbove: number
+    standardFee: number
+    expressFee: number
+    processingDays: number
+  }
 }
 
 type RawSeller = Omit<Seller, 'commissionRate'>

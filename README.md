@@ -1,6 +1,6 @@
-# Uniqora API
+# Riviraa API
 
-Express + TypeScript backend for the Uniqora e-commerce platform. Data is stored in **PostgreSQL** (via Prisma). On startup the API hydrates an in-memory cache from the DB; every write also persists back to PostgreSQL so data survives restarts.
+Express + TypeScript backend for the Riviraa e-commerce platform. Data is stored in **PostgreSQL** (via Prisma). On startup the API hydrates an in-memory cache from the DB; every write also persists back to PostgreSQL so data survives restarts.
 
 ## Database
 
@@ -18,14 +18,24 @@ DATABASE_URL="postgresql://postgres:TEST1234@localhost:5432/E-commerce?schema=pu
 ```bash
 cd backend
 npm install
-npx prisma db push    # create tables
-npm run db:seed       # load demo data
+npm run db:setup      # migrate schema + seed demo data
 npm run dev
 ```
 
+If this database was previously created with `db push` (tables exist, no migration history):
+
+```bash
+npm run db:migrate:resolve   # baseline the init migration
+npm run db:seed              # optional re-seed
+```
+
 Other DB commands:
+- `npm run db:migrate` — apply pending migrations (safe for prod/CI)
+- `npm run db:migrate:dev -- <name>` — create a new migration from schema changes
+- `npm run db:migrate:status` — show applied / pending migrations
 - `npm run db:studio` — browse data in Prisma Studio
-- `npm run db:reset` — wipe + re-seed
+- `npm run db:reset` — wipe DB, re-apply migrations, and seed
+- `npm run db:push` — push schema without migrations (prototyping only)
 
 The API connects on startup and hydrates from PostgreSQL. Creates, updates, and deletes (users, products, cart, wishlist, orders, addresses, moderation, campaigns, etc.) are written to the database. Health check reports `database: "connected"`.
 

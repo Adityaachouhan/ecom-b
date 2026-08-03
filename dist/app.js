@@ -20,6 +20,9 @@ import superadminRoutes from './routes/superadmin.js';
 import paymentsRoutes from './routes/payments.js';
 import notificationsRoutes from './routes/notifications.js';
 import reviewsRoutes from './routes/reviews.js';
+import deliveryRoutes from './routes/delivery.js';
+import webhooksRoutes from './routes/webhooks.js';
+import newsletterRoutes from './routes/newsletter.js';
 const app = express();
 const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174')
     .split(',')
@@ -41,7 +44,7 @@ app.get('/api/health', async (_req, res) => {
     }
     res.status(200).json({
         success: true,
-        message: 'Uniqora API is running',
+        message: 'Riviraa API is running',
         database,
         dbName: process.env.DB_NAME,
         timestamp: new Date().toISOString(),
@@ -66,6 +69,9 @@ app.use('/api/superadmin', superadminRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/reviews', reviewsRoutes);
+app.use('/api/delivery', deliveryRoutes);
+app.use('/api/webhooks', webhooksRoutes);
+app.use('/api/newsletter', newsletterRoutes);
 app.use(notFound);
 app.use(errorHandler);
 export default app;

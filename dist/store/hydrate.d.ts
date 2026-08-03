@@ -1,4 +1,4 @@
-import type { Address, Alert, Approval, Ad, AuditLog, AuthAccount, Campaign, CartItem, Escalation, FlaggedProduct, FlaggedReview, Notification, PaymentMethod, Payout, ReturnRequest, TeamMember } from './db.js';
+import type { Address, Alert, Approval, Ad, AuditLog, AuthAccount, Campaign, CartItem, Delivery, DeliveryEarning, DeliveryPartner, Escalation, FlaggedProduct, FlaggedReview, Notification, NotificationLog, NotificationTemplate, PaymentMethod, Payout, ReturnRequest, SellerSettlement, Shipment, TeamMember } from './db.js';
 /** Load all tables from PostgreSQL into the in-memory store shape used by routes. */
 export declare function hydrateFromDatabase(target: {
     products: unknown[];
@@ -30,11 +30,18 @@ export declare function hydrateFromDatabase(target: {
     ads: Ad[];
     returns: ReturnRequest[];
     payouts: Payout[];
+    settlements: SellerSettlement[];
     auditLogs: AuditLog[];
     team: TeamMember[];
     platformConfig: Record<string, unknown>;
     alerts: Alert[];
     notifications: Notification[];
+    notificationTemplates: NotificationTemplate[];
+    notificationLogs: NotificationLog[];
+    deliveryPartners: DeliveryPartner[];
+    deliveries: Delivery[];
+    deliveryEarnings: DeliveryEarning[];
+    shipments: Shipment[];
     analytics: Record<string, unknown>;
     finance: Record<string, unknown>;
 }): Promise<{

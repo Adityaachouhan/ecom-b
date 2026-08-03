@@ -2,6 +2,9 @@ import './lib/env.js';
 import { connectDatabase, disconnectDatabase } from './lib/prisma.js';
 import { db } from './store/db.js';
 import { hydrateFromDatabase } from './store/hydrate.js';
+import { startDeliveryScheduler } from './lib/deliveryAssignment.js';
+import { ensureNotificationTemplates, startNotificationScheduler } from './lib/notifications.js';
+import { startSettlementScheduler } from './lib/settlements.js';
 import app from './app.js';
 const PORT = Number(process.env.PORT) || 3001;
 async function bootstrap() {
@@ -24,9 +27,14 @@ async function bootstrap() {
         await disconnectDatabase().catch(() => undefined);
     }
     app.listen(PORT, () => {
+        startDeliveryScheduler();
+        startSettlementScheduler();
+        void ensureNotificationTemplates().then(() => {
+            startNotificationScheduler();
+        });
         console.log(`
 ╔══════════════════════════════════════════════╗
-║     Uniqora API running on :${PORT}            ║
+║     Riviraa API running on :${PORT}            ║
 ║     Health: http://localhost:${PORT}/api/health ║
 ║     Database: ${dbStatus.padEnd(33)}║
 ║                                              ║
@@ -36,6 +44,7 @@ async function bootstrap() {
 ║  • /login/manager   anita.verma@marketplace… ║
 ║  • /login/admin     vikram.singh@marketplace…║
 ║  • /login/superadmin root@marketplace.com    ║
+║  • /login/delivery  arjun.rider@riviraa.com  ║
 ╚══════════════════════════════════════════════╝
 `);
     });

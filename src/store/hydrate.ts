@@ -9,13 +9,20 @@ import type {
   AuthAccount,
   Campaign,
   CartItem,
+  Delivery,
+  DeliveryEarning,
+  DeliveryPartner,
   Escalation,
   FlaggedProduct,
   FlaggedReview,
   Notification,
+  NotificationLog,
+  NotificationTemplate,
   PaymentMethod,
   Payout,
   ReturnRequest,
+  SellerSettlement,
+  Shipment,
   TeamMember,
 } from './db.js'
 
@@ -51,11 +58,18 @@ export async function hydrateFromDatabase(target: {
   ads: Ad[]
   returns: ReturnRequest[]
   payouts: Payout[]
+  settlements: SellerSettlement[]
   auditLogs: AuditLog[]
   team: TeamMember[]
   platformConfig: Record<string, unknown>
   alerts: Alert[]
   notifications: Notification[]
+  notificationTemplates: NotificationTemplate[]
+  notificationLogs: NotificationLog[]
+  deliveryPartners: DeliveryPartner[]
+  deliveries: Delivery[]
+  deliveryEarnings: DeliveryEarning[]
+  shipments: Shipment[]
   analytics: Record<string, unknown>
   finance: Record<string, unknown>
 }) {
@@ -80,12 +94,19 @@ export async function hydrateFromDatabase(target: {
     ads,
     returns,
     payouts,
+    settlements,
     auditLogs,
     team,
     alerts,
     notifications,
     platformConfig,
     analyticsSnapshot,
+    deliveryPartners,
+    deliveries,
+    deliveryEarnings,
+    shipments,
+    notificationTemplates,
+    notificationLogs,
   ] = await Promise.all([
     prisma.user.findMany(),
     prisma.customer.findMany(),
@@ -107,12 +128,19 @@ export async function hydrateFromDatabase(target: {
     prisma.ad.findMany(),
     prisma.returnRequest.findMany(),
     prisma.payout.findMany(),
+    prisma.sellerSettlement.findMany(),
     prisma.auditLog.findMany({ orderBy: { timestamp: 'desc' } }),
     prisma.teamMember.findMany(),
     prisma.alert.findMany(),
     prisma.notification.findMany(),
     prisma.platformConfig.findUnique({ where: { id: 1 } }),
     prisma.analyticsSnapshot.findUnique({ where: { id: 1 } }),
+    prisma.deliveryPartner.findMany(),
+    prisma.delivery.findMany(),
+    prisma.deliveryEarning.findMany(),
+    prisma.shipment.findMany(),
+    prisma.notificationTemplate.findMany(),
+    prisma.notificationLog.findMany(),
   ])
 
   target.accounts.splice(
@@ -188,6 +216,12 @@ export async function hydrateFromDatabase(target: {
       performanceScore: s.performanceScore,
       returnRate: s.returnRate,
       cancellationRate: s.cancellationRate,
+      shippingSettings: (s.shippingSettings as {
+        freeShippingAbove: number
+        standardFee: number
+        expressFee: number
+        processingDays: number
+      } | null) || undefined,
     }))
   )
 
@@ -225,6 +259,7 @@ export async function hydrateFromDatabase(target: {
         priceModifier: v.priceModifier ?? undefined,
         color: v.type === 'color' ? v.label : undefined,
         colorHex: v.type === 'color' ? v.value : undefined,
+        images: v.images?.length ? v.images : undefined,
       }))
       return {
         id: p.id,
@@ -503,6 +538,24 @@ export async function hydrateFromDatabase(target: {
     }))
   )
 
+  target.settlements.splice(
+    0,
+    target.settlements.length,
+    ...settlements.map((s) => ({
+      id: s.id,
+      sellerId: s.sellerId,
+      orderId: s.orderId,
+      orderDate: s.orderDate ? iso(s.orderDate) : undefined,
+      orderAmount: s.orderAmount,
+      commissionRate: s.commissionRate,
+      commissionAmount: s.commissionAmount,
+      netAmount: s.netAmount,
+      status: s.status as SellerSettlement['status'],
+      payoutDate: s.payoutDate ? dateOnly(s.payoutDate) : undefined,
+      createdAt: iso(s.createdAt),
+    }))
+  )
+
   target.auditLogs.splice(
     0,
     target.auditLogs.length,
@@ -558,11 +611,98 @@ export async function hydrateFromDatabase(target: {
     }))
   )
 
+  target.deliveryPartners.splice(
+    0,
+    target.deliveryPartners.length,
+    ...deliveryPartners.map((p) => ({
+      id: p.id,
+      userId: p.userId,
+      name: p.name,
+      phone: p.phone,
+      email: p.email,
+      vehicleType: p.vehicleType as DeliveryPartner['vehicleType'],
+      kycStatus: p.kycStatus as DeliveryPartner['kycStatus'],
+      kycDocuments: (p.kycDocuments as DeliveryPartner['kycDocuments']) || {},
+      availabilityStatus: p.availabilityStatus as DeliveryPartner['availabilityStatus'],
+      currentLat: p.currentLat ?? undefined,
+      currentLng: p.currentLng ?? undefined,
+      rating: p.rating,
+      totalDeliveries: p.totalDeliveries,
+      consecutiveFailures: p.consecutiveFailures,
+      joinedDate: dateOnly(p.joinedDate),
+    }))
+  )
+
+  target.deliveries.splice(
+    0,
+    target.deliveries.length,
+    ...deliveries.map((d) => ({
+      id: d.id,
+      orderId: d.orderId,
+      deliveryPartnerId: d.deliveryPartnerId ?? undefined,
+      pickupAddress: d.pickupAddress,
+      dropAddress: d.dropAddress,
+      pickupLat: d.pickupLat ?? undefined,
+      pickupLng: d.pickupLng ?? undefined,
+      dropLat: d.dropLat ?? undefined,
+      dropLng: d.dropLng ?? undefined,
+      packageType: d.packageType as Delivery['packageType'],
+      paymentType: d.paymentType as Delivery['paymentType'],
+      codAmount: d.codAmount,
+      status: d.status as Delivery['status'],
+      assignedAt: iso(d.assignedAt),
+      acceptedAt: d.acceptedAt ? iso(d.acceptedAt) : undefined,
+      pickedUpAt: d.pickedUpAt ? iso(d.pickedUpAt) : undefined,
+      outForDeliveryAt: d.outForDeliveryAt ? iso(d.outForDeliveryAt) : undefined,
+      deliveredAt: d.deliveredAt ? iso(d.deliveredAt) : undefined,
+      failureReason: d.failureReason ?? undefined,
+      failureNote: d.failureNote ?? undefined,
+      reattemptOf: d.reattemptOf ?? undefined,
+      otpCode: d.otpCode ?? undefined,
+      proofImageUrl: d.proofImageUrl ?? undefined,
+      codSubmitted: d.codSubmitted,
+      triedPartnerIds: d.triedPartnerIds || [],
+    }))
+  )
+
+  target.deliveryEarnings.splice(
+    0,
+    target.deliveryEarnings.length,
+    ...deliveryEarnings.map((e) => ({
+      id: e.id,
+      deliveryPartnerId: e.deliveryPartnerId,
+      deliveryId: e.deliveryId,
+      baseFee: e.baseFee,
+      distanceBonus: e.distanceBonus,
+      peakBonus: e.peakBonus,
+      total: e.total,
+      payoutStatus: e.payoutStatus as DeliveryEarning['payoutStatus'],
+      payoutDate: e.payoutDate ? iso(e.payoutDate) : undefined,
+      createdAt: iso(e.createdAt),
+    }))
+  )
+
+  target.shipments.splice(
+    0,
+    target.shipments.length,
+    ...shipments.map((s) => ({
+      id: s.id,
+      orderId: s.orderId,
+      deliveryMode: s.deliveryMode as Shipment['deliveryMode'],
+      providerName: s.providerName ?? undefined,
+      awbNumber: s.awbNumber ?? undefined,
+      trackingUrl: s.trackingUrl ?? undefined,
+      rateCharged: s.rateCharged ?? undefined,
+      status: s.status as Shipment['status'],
+      createdAt: iso(s.createdAt),
+    }))
+  )
+
   if (platformConfig) {
     Object.assign(target.platformConfig, {
-      siteName: platformConfig.siteName === 'Atmosphere' ? 'Uniqora' : platformConfig.siteName,
+      siteName: platformConfig.siteName === 'Atmosphere' ? 'Riviraa' : platformConfig.siteName,
       supportEmail: platformConfig.supportEmail === 'support@atmosphere.in'
-        ? 'support@uniqora.com'
+        ? 'support@riviraa.com'
         : platformConfig.supportEmail,
       defaultCommission: platformConfig.defaultCommission,
       minPayoutAmount: platformConfig.minPayoutAmount,
@@ -572,8 +712,37 @@ export async function hydrateFromDatabase(target: {
       maintenanceMode: platformConfig.maintenanceMode,
       otpExpiryMinutes: platformConfig.otpExpiryMinutes,
       returnWindowDays: platformConfig.returnWindowDays,
+      deliveryMode: platformConfig.deliveryMode ?? 'own_fleet',
+      shippingPriority: platformConfig.shippingPriority ?? 'cost',
+      lowStockThreshold: platformConfig.lowStockThreshold ?? 10,
     })
   }
+
+  target.notificationTemplates.splice(
+    0,
+    target.notificationTemplates.length,
+    ...notificationTemplates.map((t) => ({
+      id: t.id,
+      eventType: t.eventType,
+      channel: t.channel as NotificationTemplate['channel'],
+      subject: t.subject ?? undefined,
+      bodyTemplate: t.bodyTemplate,
+    }))
+  )
+
+  target.notificationLogs.splice(
+    0,
+    target.notificationLogs.length,
+    ...notificationLogs.map((l) => ({
+      id: l.id,
+      userId: l.userId,
+      eventType: l.eventType,
+      channel: l.channel as NotificationLog['channel'],
+      status: l.status as NotificationLog['status'],
+      sentAt: iso(l.sentAt),
+      refId: l.refId ?? undefined,
+    }))
+  )
 
   if (analyticsSnapshot?.data && typeof analyticsSnapshot.data === 'object') {
     const data = analyticsSnapshot.data as Record<string, unknown>

@@ -9,6 +9,7 @@ import {
 } from '../store/persist.js'
 import { authenticate, requireRoles, adminRoles, staffRoles } from '../middleware/auth.js'
 import { fail, generateId, paginate, success, todayISO } from '../utils/helpers.js'
+import { settlementSummaryForSeller } from '../lib/settlements.js'
 
 const router = Router()
 
@@ -128,9 +129,20 @@ router.patch('/me/bank', requireRoles('seller'), async (req, res, next) => {
   }
 })
 
-router.patch('/me/shipping', requireRoles('seller'), (req, res, next) => {
+router.patch('/me/shipping', requireRoles('seller'), async (req, res, next) => {
   try {
-    res.json(success(req.body, 'Shipping settings saved'))
+    const sid = req.user!.sellerId || req.user!.id
+    const seller = db.sellers.find((s) => s.id === sid)
+    if (!seller) throw fail('Seller not found', 404)
+    const body = req.body || {}
+    seller.shippingSettings = {
+      freeShippingAbove: Number(body.freeShippingAbove ?? seller.shippingSettings?.freeShippingAbove ?? 499),
+      standardFee: Number(body.standardFee ?? seller.shippingSettings?.standardFee ?? 40),
+      expressFee: Number(body.expressFee ?? seller.shippingSettings?.expressFee ?? 99),
+      processingDays: Number(body.processingDays ?? seller.shippingSettings?.processingDays ?? 1),
+    }
+    await saveSeller(seller)
+    res.json(success(seller.shippingSettings, 'Shipping settings saved'))
   } catch (e) {
     next(e)
   }
@@ -198,10 +210,14 @@ router.patch('/me/returns/:id', requireRoles('seller'), async (req, res, next) =
 router.get('/me/earnings', requireRoles('seller'), (req, res) => {
   const sid = req.user!.sellerId || req.user!.id
   const seller = db.sellers.find((s) => s.id === sid)
+  const summary = settlementSummaryForSeller(sid)
+  const hasSettlements = db.settlements.some((s) => s.sellerId === sid)
   res.json(
     success({
       totalRevenue: seller?.totalRevenue || 0,
-      pendingPayouts: seller?.pendingPayouts || 0,
+      pendingPayouts: hasSettlements ? summary.pendingPayouts : seller?.pendingPayouts || 0,
+      commissionPaid: summary.commissionTotal,
+      settlementSummary: summary,
       timeline: db.analytics.earningsTimeline,
       performance: db.analytics.sellerPerformance,
     })
@@ -212,6 +228,14 @@ router.get('/me/payouts', requireRoles('seller'), (req, res) => {
   const sid = req.user!.sellerId || req.user!.id
   const list = db.payouts.filter((p) => p.sellerId === sid)
   res.json(success(list))
+})
+
+router.get('/me/settlements', requireRoles('seller'), (req, res) => {
+  const sid = req.user!.sellerId || req.user!.id
+  const list = db.settlements
+    .filter((s) => s.sellerId === sid)
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+  res.json(success({ settlements: list, summary: settlementSummaryForSeller(sid) }))
 })
 
 /** Seller campaigns */

@@ -66,4 +66,4 @@ export function requireSuperAdminOrigin(req, _res, next) {
 /** Staff roles that can manage platform-wide resources */
 export const staffRoles = ['manager', 'admin', 'superadmin'];
 export const adminRoles = ['admin', 'superadmin'];
-export const ALL_ROLES = ['customer', 'seller', 'manager', 'admin', 'superadmin'];
+export const ALL_ROLES = ['customer', 'seller', 'manager', 'admin', 'superadmin', 'delivery'];

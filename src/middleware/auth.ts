@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { fail } from '../utils/helpers.js'
 
-export type Role = 'customer' | 'seller' | 'manager' | 'admin' | 'superadmin'
+export type Role = 'customer' | 'seller' | 'manager' | 'admin' | 'superadmin' | 'delivery'
 
 export interface AuthUser {
   id: string
@@ -98,4 +98,4 @@ export function requireSuperAdminOrigin(req: Request, _res: Response, next: Next
 export const staffRoles: Role[] = ['manager', 'admin', 'superadmin']
 export const adminRoles: Role[] = ['admin', 'superadmin']
 
-export const ALL_ROLES: Role[] = ['customer', 'seller', 'manager', 'admin', 'superadmin']
+export const ALL_ROLES: Role[] = ['customer', 'seller', 'manager', 'admin', 'superadmin', 'delivery']

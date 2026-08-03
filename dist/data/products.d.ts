@@ -7,6 +7,8 @@ export interface ProductVariant {
     priceModifier?: number;
     color?: string;
     colorHex?: string;
+    /** Optional per-variant image set (e.g. distinct photos per color). Falls back to the product's shared images when empty. */
+    images?: string[];
 }
 export interface ProductReview {
     id: string;
